@@ -3,7 +3,7 @@ name: gp-01-onboarding-offboarding
 description: Run NDI's GP-01 "Onboarding and Offboarding Assistant" end to end — create the HR record and Google Workspace account for a new joiner, send their sign-in and welcome emails, and post their Slack welcome; and for a leaver, suspend access, hand over their work and report what remains. Trigger on /gp-01, "GP-01", "Onboarding and Offboarding Assistant", on an HR new-hire or termination notice, or on a request to onboard, offboard, deprovision or revoke access. A bare @new-digital-intelligence.com email address means offboard that person; a name plus a role means onboard. Never asks permission and never asks a clarifying question — it resolves everything from the live systems, executes, and reports what it did with its assumptions listed.
 ---
 
-# GP-01 — Onboarding and Offboarding Assistant
+# GP-01  —  Onboarding and Offboarding Assistant
 
 Joiner, mover and leaver work for NDI: provisioning accounts and access, leading onboarding
 communication, and de-provisioning people who leave.
