@@ -23,6 +23,9 @@ This repo is a plugin marketplace. Once, per person:
 
 In Cowork: **Customize → Plugins → Add marketplace**, then install from it.
 
+**Then turn auto-update on for the marketplace — see below. It is off by default, and
+without it you stay on the version you installed.**
+
 ### Turn auto-update on — it is off by default
 
 Auto-update is enabled by default only for Anthropic's own marketplaces. For a third-party
