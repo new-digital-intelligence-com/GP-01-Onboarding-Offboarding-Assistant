@@ -1,9 +1,9 @@
 /**
  * Bundles skill/ into a TypeScript module at build time.
  *
- * Cloudflare Workers has no filesystem at runtime, so the skill cannot be read
- * with fs when deployed. Embedding it keeps the repo as the single source of
- * truth while producing something Workers can actually serve.
+ * The skill lives outside app/, so it is not part of the serverless function
+ * bundle and cannot be read with fs at runtime once deployed. Embedding it at
+ * build time keeps the repo as the single source of truth.
  *
  * Generated output is git-ignored: the skill lives in skill/, never here.
  */

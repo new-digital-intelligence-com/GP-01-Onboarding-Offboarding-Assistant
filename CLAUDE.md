@@ -50,8 +50,13 @@ Claude to skip writes — never as TypeScript that skips calls.
 
 `scripts/embed-skill.mjs` copies the skill into `src/lib/skill.generated.ts` on every
 `dev` and `build`; `skill.ts` reshapes it into the system prompt. Build-time, not `fs` at
-runtime — **Cloudflare Workers has no runtime filesystem**, so an `fs` read works in
-`next dev` and fails once deployed. The generated file is git-ignored; never edit it.
+runtime — the skill lives **outside `app/`**, so it is not in the deployed function bundle
+and an `fs` read works in `next dev` and fails once deployed. The generated file is
+git-ignored; never edit it.
+
+**The build needs the repo root, not just `app/`.** `embed-skill.mjs` reads
+`../../plugins/...`. On Vercel, if Root Directory is `app`, *Include source files outside of
+the Root Directory* must be on, or `prebuild` fails on a missing `SKILL.md`.
 
 ## Platform facts — verified, do not re-derive
 
@@ -72,7 +77,8 @@ runtime — **Cloudflare Workers has no runtime filesystem**, so an `fs` read wo
 ## Deployment prerequisite — authentication
 
 The console has no login. It creates and suspends Google Workspace accounts, so it must sit
-behind **Cloudflare Access** restricted to the NDI Google domain before it is deployed at all
+behind **Vercel Deployment Protection** (Vercel Authentication), confirmed to cover the
+**production** domain and not only preview URLs, before it is deployed at all
 — there is no dry-run mode to fall back on, so any reachable deployment is a live one. Do not
 add a hand-rolled password or a client-side check instead: the API
 route is the thing that must be protected, and anything enforced in the browser is not.

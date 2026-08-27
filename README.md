@@ -68,7 +68,7 @@ nobody can tell which one ran.
 
 ## The console
 
-`app/` is a Next.js app on Cloudflare Workers for demonstrating GP-01 to people who will not
+`app/` is a Next.js app deployed on Vercel for demonstrating GP-01 to people who will not
 use a chat window. It **does not re-implement the skill** — it calls the Claude API with
 SKILL.md as the system prompt and the same MCP connectors, then streams the run.
 
@@ -89,14 +89,16 @@ Deployed bare, its URL is an open form on the internet that provisions identitie
 NDI tenant. Holding the Zapier endpoint server-side protects the *credential*; it does
 nothing to control *who can trigger it*.
 
-Use **Cloudflare Access** (Zero Trust → Applications → Self-hosted) with a policy limiting
-the Worker to `@new-digital-intelligence.com` Google accounts. Enforced at the edge before
-a request reaches the app, no code required, free at this scale — and it gives a per-person
-record of who ran what, which a shared Zapier endpoint cannot.
+Use **Vercel Deployment Protection** (Settings → Deployment Protection → Vercel
+Authentication), and confirm the policy covers the **production** domain, not just preview
+URLs. Enforced before a request reaches the app, no code required — and it gives a
+per-person record of who ran what, which a shared Zapier endpoint cannot.
 
-Until Access is in place, leave `DRY_RUN=true`.
+There is **no dry-run mode** to fall back on: every run executes for real, so any reachable
+deployment is a live one. Do not deploy until protection is in place and verified by loading
+the production URL from a signed-out browser.
 
-Do not rely on the URL being hard to guess. `workers.dev` hostnames are enumerable, and an
+Do not rely on the URL being hard to guess. `vercel.app` hostnames are enumerable, and an
 unauthenticated provisioning endpoint is a finding in any security review.
 
 Note the API key is a separate path from a Claude seat: it carries none of your account's
@@ -137,7 +139,7 @@ Against *NDI Demos Acceptance Criteria*. Honest status — ☐ means not done, n
 | Selection menus (AskUserQuestion) | ✅ bare invocation |
 | Guides the user through with further selections | ✅ bare invocation |
 | Creates documents for download | ✅ |
-| Live demo URL for non-chat users | ⚠️ `app/` builds and runs; **not deployed yet**, and must sit behind Cloudflare Access first |
+| Live demo URL for non-chat users | ⚠️ `app/` builds and runs; **not deployed yet**, and must sit behind Vercel Deployment Protection first |
 | **Skill published in NDI tenant** | ☐ |
 | **Skill stored in the AI Employee Drive folder** | ☐ |
 | **URL of an end-to-end sample chat** | ☐ |
