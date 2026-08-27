@@ -56,7 +56,7 @@ Edit **one file**: `plugins/gp-01-onboarding-offboarding/skills/gp-01-onboarding
 
 ```bash
 git commit && git push        # → everyone with auto-update on gets it next launch
-cd app && npm run cf:deploy   # → console picks it up (build-time embed)
+                              # → Vercel redeploys the console, re-embedding the skill
 ```
 
 `plugin.json` deliberately has **no `version` field**. Git-sourced plugins update on commit
@@ -79,8 +79,8 @@ cp .env.local.example .env.local   # ANTHROPIC_API_KEY + Zapier MCP endpoint
 npm run dev
 ```
 
-Run from local disk, not a network share. **Dry run is on by default** — every read happens
-for real, no writes.
+Run from local disk, not a network share. **Every run executes for real** — there is no
+dry-run mode, and the Review step is the only checkpoint.
 
 ### Put authentication in front of it before deploying
 
@@ -117,56 +117,3 @@ owners, never hidden:
 | Session revocation, mailbox delegation, Drive ownership transfer | Scopes unavailable. Suspension is what actually stops access. |
 | Account deletion | Never automatic — a human decision after the retention window. |
 
-## Acceptance criteria
-
-Against *NDI Demos Acceptance Criteria*. Honest status — ☐ means not done, not "nearly".
-
-| Criterion | State |
-|---|---|
-| Runs on the Claude Enterprise Platform | ✅ |
-| Skill file in a GitHub repo, plug-in created | ✅ this repo is both marketplace and plugin |
-| Plug-in set to auto-update | ⚠️ **per marketplace, by each installer** — see *Turn auto-update on* above. Nobody can force it centrally. |
-| MCP connectors | ✅ one Zapier endpoint: Google Workspace Admin, BambooHR, Gmail (as People Ops), Slack, Sheets |
-| Artifacts (outputs) | ✅ register rows, emails, completion report — offered as files or Drive links |
-| Interface systems on demo accounts | ✅ Google Workspace, BambooHR, Gmail, Slack — all live on the NDI tenant |
-| Sample Input / Sample Output / Templates | ✅ |
-| Functional specification | ✅ `GP-01-functional-spec.md` |
-| Upload of documents | ✅ a pasted or attached HR notification is a complete input |
-| Multi-step processing | ✅ |
-| Single-prompt evocation | ✅ `/gp-01-onboarding-offboarding` |
-| Explains its purpose briefly | ✅ bare invocation |
-| Stores settings, offers reuse-or-change | ✅ settings doc in Drive, read at the start of every run |
-| Selection menus (AskUserQuestion) | ✅ bare invocation |
-| Guides the user through with further selections | ✅ bare invocation |
-| Creates documents for download | ✅ |
-| Live demo URL for non-chat users | ⚠️ `app/` builds and runs; **not deployed yet**, and must sit behind Vercel Deployment Protection first |
-| **Skill published in NDI tenant** | ☐ |
-| **Skill stored in the AI Employee Drive folder** | ☐ |
-| **URL of an end-to-end sample chat** | ☐ |
-| **YouTube demo video** | ☐ |
-
-The four ☐ items and the auto-update toggle are all actions only an NDI admin can take;
-nothing in this repo can complete them.
-
-## Publishing to the NDI tenant
-
-Two distribution paths, and they must not both be live at once.
-
-**Plugin (preferred).** Push this repo to `new-digital-intelligence-com`, then each person
-runs the two `/plugin` commands above and switches auto-update on for the marketplace. Every
-later `git push` reaches them on their next launch. This is the path the acceptance criteria
-describe as "stored in github repository — Plug-In created and set to auto update".
-
-**Skill upload.** Build the bundle and upload it in the tenant's skill admin:
-
-```bash
-cd plugins/gp-01-onboarding-offboarding/skills
-zip -r ../../../gp-01-onboarding-offboarding.skill gp-01-onboarding-offboarding
-```
-
-An uploaded `.skill` is a **snapshot** — it does not follow the repo. Editing SKILL.md and
-pushing changes nothing for anyone who installed the upload, and there is no warning. If you
-upload it, put a re-upload step in the release checklist, or the tenant copy silently rots.
-
-**Never run both.** Two GP-01s in one tenant and no one can tell which one answered a
-trigger — including you, when a run misbehaves.
