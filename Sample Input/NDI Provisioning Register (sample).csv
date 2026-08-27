@@ -1,0 +1,17 @@
+EmployeeID,Person,Role,System,Resource,AccessLevel,Action,Status,Basis,ApprovedBy,ExecutedAt,Evidence,ChangeRef
+NDI-0142,Tom Beck,Solution Architect,Identity,SSO account,user,grant,verified,joiner — standard,Helmi Lakhder,2026-02-02T08:12:00Z,idp-user-4471,JOIN-2026-02-02-tbeck
+NDI-0142,Tom Beck,Solution Architect,Google Workspace,Mail account,user,grant,verified,joiner — standard,Helmi Lakhder,2026-02-02T08:14:00Z,tom.beck@ndi.example,JOIN-2026-02-02-tbeck
+NDI-0142,Tom Beck,Solution Architect,Google Workspace,Company shared drive,viewer,grant,verified,joiner — standard,Helmi Lakhder,2026-02-02T08:20:00Z,drive-membership-company-0142,JOIN-2026-02-02-tbeck
+NDI-0142,Tom Beck,Solution Architect,Google Workspace,all-staff@ distribution list,member,grant,verified,joiner — standard,Helmi Lakhder,2026-02-02T08:21:00Z,group-all-staff-0142,JOIN-2026-02-02-tbeck
+NDI-0142,Tom Beck,Solution Architect,Google Workspace,People Ops handbook folder,viewer,grant,verified,joiner — standard,Helmi Lakhder,2026-02-02T08:22:00Z,folder-handbook-0142,JOIN-2026-02-02-tbeck
+NDI-0142,Tom Beck,Solution Architect,Google Workspace,Delivery shared drive,editor,grant,verified,joiner — standard,Helmi Lakhder,2026-02-02T08:25:00Z,drive-membership-delivery-0142,JOIN-2026-02-02-tbeck
+NDI-0142,Tom Beck,Solution Architect,Slack,#general,member,grant,verified,joiner — standard,Helmi Lakhder,2026-02-02T08:30:00Z,slack-invite-general-0142,JOIN-2026-02-02-tbeck
+NDI-0142,Tom Beck,Solution Architect,Slack,#announcements,member,grant,verified,joiner — standard,Helmi Lakhder,2026-02-02T08:30:00Z,slack-invite-announcements-0142,JOIN-2026-02-02-tbeck
+NDI-0142,Tom Beck,Solution Architect,Slack,#delivery,member,grant,verified,joiner — standard,Helmi Lakhder,2026-02-02T08:31:00Z,slack-invite-delivery-0142,JOIN-2026-02-02-tbeck
+NDI-0142,Tom Beck,Solution Architect,Slack,#solution-architecture,member,grant,verified,joiner — standard,Helmi Lakhder,2026-02-02T08:31:00Z,slack-invite-sa-0142,JOIN-2026-02-02-tbeck
+NDI-0142,Tom Beck,Solution Architect,SaaS,Password manager,user,grant,verified,joiner — standard,Helmi Lakhder,2026-02-02T08:40:00Z,vault-user-0142,JOIN-2026-02-02-tbeck
+NDI-0142,Tom Beck,Solution Architect,SaaS,Cloud sandbox,contributor,grant,verified,"approval-gated — approved by Head of Engineering, 2026-02-05 sandbox request",Head of Engineering,2026-02-05T14:02:00Z,sandbox-project-tb-0142,JOIN-2026-02-02-tbeck
+NDI-0187,Priya Raman,AI Engineer,Identity,SSO account,user,grant,verified,joiner — standard,Helmi Lakhder,2026-06-15T07:55:00Z,idp-user-5120,JOIN-2026-06-15-praman
+NDI-0187,Priya Raman,AI Engineer,Google Workspace,Mail account,user,grant,verified,joiner — standard,Helmi Lakhder,2026-06-15T07:57:00Z,priya.raman@ndi.example,JOIN-2026-06-15-praman
+NDI-0187,Priya Raman,AI Engineer,SaaS,Source control organisation,write,grant,verified,joiner — standard,Helmi Lakhder,2026-06-15T08:20:00Z,scm-member-5120,JOIN-2026-06-15-praman
+NDI-0187,Priya Raman,AI Engineer,SaaS,Production environment,admin,grant,blocked,approval-gated — joiner — standard,,,security briefing not yet completed,JOIN-2026-06-15-praman

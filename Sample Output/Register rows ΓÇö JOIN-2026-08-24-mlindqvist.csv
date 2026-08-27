@@ -1,0 +1,9 @@
+ChangeRef,Person,Role,System,Resource,AccessLevel,Action,Status,Basis,ApprovedBy,ExecutedAt,Evidence
+JOIN-2026-08-24-mlindqvist,Maja Lindqvist,Marketing Analyst,BambooHR,Employee record,record,grant,verified,joiner — standard,,2026-08-24T09:12:00Z,employee 127 read back
+JOIN-2026-08-24-mlindqvist,Maja Lindqvist,Marketing Analyst,BambooHR,jobInfo row,Marketing Analyst / Marketing,grant,verified,joiner — standard,,2026-08-24T09:12:30Z,table row read back; effective 2026-09-01
+JOIN-2026-08-24-mlindqvist,Maja Lindqvist,Marketing Analyst,Google Workspace,Account,user,grant,verified,joiner — standard,,2026-08-24T09:13:10Z,directory read-back; forced password reset set
+JOIN-2026-08-24-mlindqvist,Maja Lindqvist,Marketing Analyst,Google Workspace,Manager relation,relation,grant,verified,joiner — standard,,2026-08-24T09:13:40Z,relations[0].value matches manager address
+JOIN-2026-08-24-mlindqvist,Maja Lindqvist,Marketing Analyst,Gmail,Sign-in email,message,grant,verified,joiner — standard,,2026-08-24T09:14:05Z,sent to personal address; no cc
+JOIN-2026-08-24-mlindqvist,Maja Lindqvist,Marketing Analyst,Gmail,Welcome email,message,grant,verified,joiner — standard,,2026-08-24T09:14:20Z,sent to work address; manager cc'd after directory check
+JOIN-2026-08-24-mlindqvist,Maja Lindqvist,Marketing Analyst,Slack,#ai-employee-gp-01-onboarding-and-offboarding-assistant,message,grant,verified,joiner — standard,,2026-08-24T09:14:45Z,message ts recorded
+JOIN-2026-08-24-mlindqvist,Maja Lindqvist,Marketing Analyst,Slack,Workspace membership,member,grant,staged,joiner — standard,IT Operations,,domain sign-up disabled (team.info.email_domain empty); no API can invite

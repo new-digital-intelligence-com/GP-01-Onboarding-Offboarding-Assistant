@@ -1,0 +1,8 @@
+ChangeRef,Person,Role,System,Resource,AccessLevel,Action,Status,Basis,ApprovedBy,ExecutedAt,Evidence
+LEAVE-2026-08-21-tbeck,Tom Beck,Solution Architect,Google Workspace,Account,user,revoke,verified,register grant JOIN-2026-02-02-tbeck,,2026-08-21T17:02:00Z,suspended: true on read-back
+LEAVE-2026-08-21-tbeck,Tom Beck,Solution Architect,BambooHR,employmentStatus,Terminated,revoke,verified,register grant JOIN-2026-02-02-tbeck,,2026-08-21T17:02:40Z,row read back; stored date 2026-08-21
+LEAVE-2026-08-21-tbeck,Tom Beck,Solution Architect,Slack,#ai-employee-gp-01-onboarding-and-offboarding-assistant,member,revoke,verified,discovery sweep — channel membership,,2026-08-21T17:03:15Z,member list re-read; absent
+LEAVE-2026-08-21-tbeck,Tom Beck,Solution Architect,Slack,#delivery,member,revoke,verified,discovery sweep — channel membership,,2026-08-21T17:03:30Z,member list re-read; absent
+LEAVE-2026-08-21-tbeck,Tom Beck,Solution Architect,Gmail,Farewell email,message,grant,verified,leaver — standard,,2026-08-21T17:04:00Z,sent to personal address; manager cc'd
+LEAVE-2026-08-21-tbeck,Tom Beck,Solution Architect,Slack,#leadership,member,revoke,staged,discovery sweep — channel membership,IT Operations,,acting identity not a member of that channel
+LEAVE-2026-08-21-tbeck,Tom Beck,Solution Architect,Slack,Workspace account,member,revoke,staged,register grant JOIN-2026-02-02-tbeck,IT Operations,,users.admin.setInactive returns not_allowed_token_type

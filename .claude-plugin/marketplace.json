@@ -1,0 +1,18 @@
+{
+  "name": "ndi-ai-employees",
+  "owner": {
+    "name": "New Digital Intelligence",
+    "url": "https://new-digital-intelligence.com"
+  },
+  "description": "NDI's AI Employee plugins for Claude Code and Cowork.",
+  "plugins": [
+    {
+      "name": "gp-01-onboarding-offboarding",
+      "source": "./plugins/gp-01-onboarding-offboarding",
+      "displayName": "GP-01 — Onboarding & Offboarding Assistant",
+      "description": "Creates a joiner's HR record and Google Workspace account, sends their sign-in and welcome emails, posts their Slack welcome; suspends access and arranges handover for a leaver.",
+      "category": "operations",
+      "keywords": ["onboarding", "offboarding", "provisioning", "hr", "ndi"]
+    }
+  ]
+}

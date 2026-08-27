@@ -1,0 +1,9 @@
+{
+  "name": "gp-01-onboarding-offboarding",
+  "displayName": "GP-01 — Onboarding & Offboarding Assistant",
+  "description": "NDI's GP-01 AI Employee. Creates a joiner's HR record and Google Workspace account, sends their sign-in and welcome emails, posts their Slack welcome; for a leaver, suspends access, arranges handover and reports honestly on what could not be automated.",
+  "author": { "name": "New Digital Intelligence" },
+  "repository": "https://github.com/new-digital-intelligence-com/GP-01-Onboarding-Offboarding-Assistant",
+  "license": "UNLICENSED",
+  "keywords": ["onboarding", "offboarding", "provisioning", "hr", "ndi", "gp-01"]
+}
