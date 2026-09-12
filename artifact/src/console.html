@@ -420,8 +420,16 @@
   .row[data-tag="STAGED"] .tag { color: var(--warn); }
   .row[data-tag="ASSUME"] { border-left-color: var(--info); }
   .row[data-tag="ASSUME"] .tag { color: var(--info); }
-  .row[data-tag="CALL"]   .tag { color: var(--ink-3); }
-  .row[data-tag="CALL"]   .txt { font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
+  .activity {
+    margin-left: auto;
+    font: 400 11.5px/1.5 var(--mono);
+    color: var(--ink-3);
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 46%;
+  }
 
   .working {
     display: flex; align-items: center; gap: 9px;
@@ -652,7 +660,11 @@
 
     <div class="log" id="log"></div>
 
-    <div class="working" id="working"><span class="pulse"></span><span id="workingText">Sending the run to Claude…</span></div>
+    <div class="working" id="working">
+      <span class="pulse"></span>
+      <span id="workingText">Sending the run to Claude…</span>
+      <span class="activity" id="activity"></span>
+    </div>
 
     <div class="notice bad hidden" id="runError"></div>
 
@@ -704,6 +716,8 @@
   const TOOL_RESULT_MAX = 32000;
   /** How many `sample()` calls one run may use before it gives up. See runLogText(). */
   const MAX_RUN_PARTS = 6;
+  /** Catalogue reads whose answer cannot change mid-run, so they are served from memory. */
+  const CACHEABLE_READ = /^(inspect_zapier_actions|discover_zapier_actions|list_zapier_connections|list_zapier_skills|get_configuration_url)$/;
 
   const $ = (id) => document.getElementById(id);
   const bytes = (s) => new TextEncoder().encode(s).length;
@@ -721,6 +735,12 @@
     ticker: 0,
     counts: { DONE: 0, STAGED: 0, FAIL: 0 },
     log: [],
+    /* Survives across parts of one run. `password` is held in memory only and is
+       never written to db — the first live run set four different passwords on a
+       real account because each part generated a fresh one it could not carry. */
+    password: "",
+    facts: [],
+    readCache: new Map(),
     finished: null,
     guardKey: "",
     overrode: false,
@@ -1050,7 +1070,22 @@
       "they are different things: failed means the system errored and a retry may fix it; staged",
       "means a named human owes the work.",
       "",
-      "**Use `new_password` for the Google Workspace password.** Never invent one yourself.",
+      "### Spend tool rounds carefully",
+      "",
+      "Your tool rounds are limited and a whole run must fit. The first live run wasted most of",
+      "them and never reached the emails. Three rules:",
+      "",
+      "1. **Call `inspect_zapier_actions` and `discover_zapier_actions` ONCE each.** The action",
+      "   list cannot change during a run. Repeats are served from memory and tell you nothing",
+      "   new — the first run asked 25 times, six in a row, and ran out of rounds.",
+      "2. **Use `remember` for anything you will need later** — the new user's id, the register's",
+      "   spreadsheet id, a channel id. It survives into the next part; your own memory does not.",
+      "3. **Do not re-verify what you already marked DONE.** One read-back per write, then move on.",
+      "",
+      "**Use `new_password` for the Google Workspace password.** Never invent one yourself. It",
+      "returns the SAME password every time, including after a continuation — so call it and reuse",
+      "the value. Setting a second password on a live account is an incident, not a retry: the",
+      "first live run PUT four different passwords onto a real person's account this way.",
       "",
       "**Finish with `finish_run`**, always — including when steps failed. It carries the counts,",
       "the ChangeRef, the completion report and the register rows.",
@@ -1079,6 +1114,21 @@
             "",
             "A step marked STEP with no matching DONE was STARTED but never confirmed. Read that",
             "resource back before acting on it — it may or may not have been written.",
+            "",
+            "**Carried forward from the earlier parts:**",
+            "",
+            state.password
+              ? "- The account password for this run is `" + state.password + "`. It was already set on" +
+                "\n  the account. `new_password` returns this same value. **Do not set another password** —" +
+                "\n  the first live run PUT four different ones onto a real account this way."
+              : "- No password has been generated yet.",
+            state.facts.length
+              ? state.facts.map((f) => "- " + f).join("\n")
+              : "- Nothing else was saved with `remember`.",
+            "",
+            "Catalogue reads you already made (`inspect_zapier_actions`, `discover_zapier_actions`,",
+            "`list_zapier_connections`) are served from memory now and cost you nothing — but you",
+            "already have their answers above, so do not go looking again.",
             "",
             "Be brief. Call `finish_run` at the end.",
           ].join("\n")
@@ -1180,16 +1230,29 @@
             );
           }
 
+          /* The configured action list does not change during a run, but the first live
+             run asked for it 25 times — six in a row after one continuation. Serve those
+             from memory: it costs a round trip and a tool round each time, and tool rounds
+             are the budget that ran out. */
+          const cacheKey = CACHEABLE_READ.test(tool)
+            ? name + " " + tool + " " + JSON.stringify((input && input.input) || {})
+            : null;
+          if (cacheKey && state.readCache.has(cacheKey)) {
+            return state.readCache.get(cacheKey);
+          }
+
           state.calls += 1;
           $("metaCalls").textContent = String(state.calls);
-          logRow("CALL", name + " · " + tool);
+          setActivity(name + " · " + tool);
           try {
             const res = await mcp.callTool(name, tool, (input && input.input) || {}, { signal: ctx.signal });
-            return clip(res.payload !== undefined ? res.payload : res.content);
+            const out = clip(res.payload !== undefined ? res.payload : res.content);
+            if (cacheKey) state.readCache.set(cacheKey, out);
+            return out;
           } catch (e) {
             const code = e && e.code ? e.code : "error";
             const msg = e && e.message ? e.message : String(e);
-            logRow("CALL", name + " · " + tool + " → " + code);
+            setActivity(name + " · " + tool + " → " + code);
             throw new Error(code + " — " + msg);
           }
         },
@@ -1218,15 +1281,37 @@
       {
         name: "new_password",
         description:
-          "Generate one cryptographically random 18-character password for a new Google Workspace " +
-          "account. Returns the password. Use this rather than inventing one.",
+          "The 18-character password for this run's new Google Workspace account. STABLE: every " +
+          "call in the same run returns the SAME password, including after you run out of tool " +
+          "rounds and continue. Never set a second password — call this and reuse the value.",
         execute() {
+          /* Idempotent on purpose. The first live run PUT four different passwords onto a
+             real account because each continuation generated a new one. */
+          if (state.password) return state.password;
           const alphabet = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%^&*-_=+";
           const raw = new Uint32Array(18);
           crypto.getRandomValues(raw);
           let out = "";
           for (let i = 0; i < raw.length; i++) out += alphabet[raw[i] % alphabet.length];
+          state.password = out;
           return out;
+        },
+      },
+      {
+        name: "remember",
+        description:
+          "Save one short fact so it survives into the next part of this run — a user id, a " +
+          "spreadsheet id, a Slack channel id, a decision you made. Anything you will need later " +
+          "and cannot look up cheaply. Returns \"remembered\".",
+        inputSchema: {
+          type: "object",
+          properties: { fact: { type: "string", description: "One line. Include the value itself." } },
+          required: ["fact"],
+        },
+        execute(input) {
+          const fact = String(input && input.fact || "").trim().slice(0, 300);
+          if (fact && !state.facts.includes(fact)) state.facts.push(fact);
+          return "remembered";
         },
       },
       {
@@ -1263,6 +1348,13 @@
   }
 
   /* ------------------------------------------------------------------- log */
+  /** Connector traffic belongs in the activity line, not the run log. The log is the
+   *  record of what happened to a person; a tool name is not that. */
+  function setActivity(text) {
+    const el = $("activity");
+    if (el) el.textContent = text;
+  }
+
   function logRow(tag, text, href) {
     state.log.push({ tag: tag, text: text, href: href || "" });
 
@@ -1353,6 +1445,9 @@
     state.calls = 0;
     state.counts = { DONE: 0, STAGED: 0, FAIL: 0 };
     state.log = [];
+    state.password = "";
+    state.facts = [];
+    state.readCache = new Map();
     state.finished = null;
     state.startedAt = Date.now();
     state.abort = new AbortController();
