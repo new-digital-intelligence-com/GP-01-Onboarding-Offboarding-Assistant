@@ -21,6 +21,30 @@ is identical whoever triggers it and nobody connects anything.
 Check connections at the start of a run with `inspect_zapier_actions`. If an app reports
 no default connection, that is a setup gap — say so plainly rather than retrying.
 
+## Zapier MCP is generic — discover, then execute
+
+**Read this before calling anything.** Zapier no longer exposes one MCP tool per configured
+action. Confirmed against the live connector on 2026-09-12, it exposes six tools GP-01 uses:
+
+| Tool | Use |
+|---|---|
+| `discover_zapier_actions` | Find the action you need |
+| `execute_zapier_read_action` | Run a read (lookups, `team.info`, read-backs) |
+| `execute_zapier_write_action` | Run a write (create, send, post, append, suspend) |
+| `inspect_zapier_actions` | Check what is configured at the start of a run |
+| `list_zapier_connections` | See which connection is default |
+| `manage_zapier_connections` | Fix a wrong default — see the trap below |
+
+**Mind the infix.** The Claude UI shows them as *Discover Actions*, *Execute Read Action* and
+*Execute Write Action*, but the real names carry `zapier`: `discover_zapier_actions`, not
+`discover_actions`. Three names elsewhere in this file predate the change and are reachable
+only as *actions*, not as tools — `gmail_send_email`, `channels_invite_v2` and
+`slack_remove_user_from_channel` are things you `discover` and then `execute`, not tools you
+call directly.
+
+So the shape of every step is: discover the action once, then execute it. Never assume a
+tool name for an app action — there is no such tool.
+
 ## The connection trap that has bitten this project twice
 
 **Zapier adds a connection on each authorise; it never replaces one, and it never changes

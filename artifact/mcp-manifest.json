@@ -23,23 +23,22 @@
     {
       "server": "Zapier",
       "enabled": true,
-      "verified": false,
+      "verified": true,
       "purpose": "Every system. Slack stays here rather than on the native Claude Slack connector, which has no tool to add or remove a channel member — see references/connector-map.md.",
       "systems": ["Google Workspace", "Gmail", "Slack", "Google Sheets"],
       "_tools_note": [
-        "Zapier MCP is GENERIC: it does NOT expose one tool per app action. It exposes a",
-        "discover-then-execute set, so there is no google_workspace_admin_..._raw_request tool",
-        "to name here. The flow is: discover_actions -> execute_read_action / execute_write_action.",
+        "Zapier MCP is GENERIC: it does NOT expose one tool per app action. There is no",
+        "google_workspace_admin_..._raw_request tool to name here. The flow is:",
+        "discover_zapier_actions -> execute_zapier_read_action / execute_zapier_write_action.",
         "",
-        "These are snake_case of the display names seen in the Claude UI on 2026-09-12. The last",
-        "three are confirmed by references/connector-map.md, which is why the mapping is trusted.",
-        "The first three are NOT yet confirmed against a live listTools() — check the page's",
-        "preflight panel before the first real run."
+        "All six names were read off the live connector on 2026-09-12. Note the infix: the",
+        "execute and discover tools are *_zapier_*, NOT the bare discover_actions /",
+        "execute_read_action / execute_write_action the UI display names suggest."
       ],
       "tools": [
-        "discover_actions",
-        "execute_read_action",
-        "execute_write_action",
+        "discover_zapier_actions",
+        "execute_zapier_read_action",
+        "execute_zapier_write_action",
         "inspect_zapier_actions",
         "list_zapier_connections",
         "manage_zapier_connections"
