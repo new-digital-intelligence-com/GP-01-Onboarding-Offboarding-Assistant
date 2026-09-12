@@ -606,6 +606,8 @@
 
   const SAMPLE_MAX_PROMPT_BYTES = 65536;
   const TOOL_RESULT_MAX = 32000;
+  /** How many `sample()` calls one run may use before it gives up. See runLogText(). */
+  const MAX_RUN_PARTS = 6;
 
   const $ = (id) => document.getElementById(id);
   const bytes = (s) => new TextEncoder().encode(s).length;
@@ -622,6 +624,7 @@
     startedAt: 0,
     ticker: 0,
     counts: { DONE: 0, STAGED: 0, FAIL: 0 },
+    log: [],
     finished: null,
     guardKey: "",
     overrode: false,
@@ -731,8 +734,12 @@
           what: "Prompt budget",
           detail: need.toLocaleString() + " of " + lim.maxPromptBytes.toLocaleString() + " bytes",
         });
-        if (lim.tools && lim.tools.maxCount < 5) {
-          checks.push({ ok: false, what: "Tool budget", detail: "this view allows only " + lim.tools.maxCount + " tools; the run needs 5" });
+        /* `tools` is absent entirely when this view cannot run page functions at all —
+           without it the run has no way to reach a connector, so it is a hard stop. */
+        if (!lim.tools) {
+          checks.push({ ok: false, what: "Tool budget", detail: "this view cannot run page tools — a run could not reach any connector" });
+        } else if (lim.tools.maxCount < 5) {
+          checks.push({ ok: false, what: "Tool budget", detail: "this view allows " + lim.tools.maxCount + " tools; the run needs 5" });
         }
       } catch {
         checks.push({ ok: "warn", what: "Prompt budget", detail: "limits() unavailable — checked at run time instead" });
@@ -852,7 +859,21 @@
   /* --------------------------------------------------------- prompt framing
      The app owns prompt framing and nothing else about the run: parameterised
      mode, the reporting protocol, and how to reach the connectors from here. */
-  function buildPrompt(v) {
+  /**
+   * One `sample()` call gets a limited number of tool rounds, and a joiner run needs more
+   * calls than that — the first live run stopped after 10 with "tool use is off". So a run
+   * is several `sample()` calls, and every call after the first carries the log of what has
+   * already happened. That log is what stops a write being repeated: the continuation is
+   * told, in the run's own vocabulary, which steps are already DONE.
+   */
+  function runLogText() {
+    return state.log
+      .filter((l) => l.tag !== "CALL")
+      .map((l) => l.tag + "  " + l.text + (l.href ? " :: " + l.href : ""))
+      .join("\n");
+  }
+
+  function buildPrompt(v, priorLog) {
     const body = (SKILL_FILES["SKILL.md"] || "").replace(/^---[\s\S]*?---\n/, "");
     const refs = REFERENCE_ORDER
       .map((rel) => (SKILL_FILES[rel] ? "\n\n<file path=\"" + rel + "\">\n" + SKILL_FILES[rel] + "\n</file>" : ""))
@@ -905,6 +926,9 @@
       "   round.",
       "2. `call_system` takes `{connector, tool, input}`, where `input` is that tool's own arguments",
       "   object. It returns the tool's payload, or throws `Error: <code> — <message>`.",
+      "   For Zapier's execute tools that object is `{selected_api, action, instructions, params}`,",
+      "   and the field names inside `params` are the action's own — `references/connector-map.md`",
+      "   has the verified shape. Getting this wrong cost three wasted calls on the first live run.",
       "3. `list_systems` also returns `not_configured`. Those systems have no connector in this",
       "   page at all. **Do not attempt their steps and do not report them as failed.** Stage each",
       "   one with a named owner and the reason, exactly as `references/approval-gates.md` defines",
@@ -941,6 +965,28 @@
       "### The run",
       "",
       trigger,
+      "",
+      priorLog
+        ? [
+            "### THIS RUN IS ALREADY IN PROGRESS — CONTINUE IT",
+            "",
+            "You ran out of tool rounds partway through. This is a continuation of the SAME run,",
+            "not a new one. Everything below already happened:",
+            "",
+            "```",
+            priorLog,
+            "```",
+            "",
+            "**Do not repeat anything already marked DONE.** Those writes have been made; doing",
+            "them again creates a duplicate account, a duplicate register row or a second email.",
+            "Pick up at the first step that is not done, and finish the run.",
+            "",
+            "A step marked STEP with no matching DONE was STARTED but never confirmed. Read that",
+            "resource back before acting on it — it may or may not have been written.",
+            "",
+            "Be brief. Call `finish_run` at the end.",
+          ].join("\n")
+        : "",
     ].join("\n");
   }
 
@@ -1122,6 +1168,8 @@
 
   /* ------------------------------------------------------------------- log */
   function logRow(tag, text, href) {
+    state.log.push({ tag: tag, text: text, href: href || "" });
+
     if (state.counts[tag] !== undefined) {
       state.counts[tag] += 1;
       $("tallyVerified").textContent = String(state.counts.DONE);
@@ -1208,6 +1256,7 @@
     state.running = true;
     state.calls = 0;
     state.counts = { DONE: 0, STAGED: 0, FAIL: 0 };
+    state.log = [];
     state.finished = null;
     state.startedAt = Date.now();
     state.abort = new AbortController();
@@ -1237,20 +1286,50 @@
     await recordRun(v, { status: "running", changeRef: null });
 
     try {
-      $("workingText").textContent = "Claude is reading the skill…";
-      const res = await sample(prompt, {
-        tools: runTools(),
-        signal: state.abort.signal,
-        cache: false,
-        modelTier: "complex",
-        onText: ({ text }) => {
-          $("narration").textContent = text;
-          $("workingText").textContent = "Running — " + state.calls + " Zapier call" + (state.calls === 1 ? "" : "s") + " so far";
-        },
-      });
-      if (res.truncated) {
-        logRow("FAIL", "The run hit the length limit and stopped mid-step. Steps already marked DONE did happen; nothing after that point ran.");
+      let input = prompt;
+      let part = 1;
+
+      for (;;) {
+        $("workingText").textContent = part === 1
+          ? "Claude is reading the skill…"
+          : "Continuing — part " + part;
+
+        const res = await sample(input, {
+          tools: runTools(),
+          signal: state.abort.signal,
+          cache: false,
+          modelTier: "complex",
+          onText: ({ text }) => {
+            $("narration").textContent = text;
+            $("workingText").textContent =
+              (part > 1 ? "Part " + part + " — " : "Running — ") +
+              state.calls + " Zapier call" + (state.calls === 1 ? "" : "s") + " so far";
+          },
+        });
+
+        /* finish_run is the only signal that the run is actually over. */
+        if (state.finished) break;
+
+        if (res.truncated) {
+          logRow("FAIL", "Claude hit the length limit mid-step. Steps already marked DONE did happen; nothing after that point ran.");
+        }
+
+        if (part >= MAX_RUN_PARTS) {
+          logRow("FAIL", "The run used all " + MAX_RUN_PARTS + " parts without finishing. Everything marked DONE did happen — read the log, then re-trigger to complete the rest.");
+          break;
+        }
+
+        const next = buildPrompt(v, runLogText());
+        if (bytes(next) > SAMPLE_MAX_PROMPT_BYTES) {
+          logRow("FAIL", "The run log has grown past the prompt limit, so it cannot be continued automatically. Everything marked DONE did happen — finish the remaining steps by hand or re-trigger.");
+          break;
+        }
+
+        part += 1;
+        logRow("STEP", "Out of tool rounds — continuing the same run (part " + part + "). Nothing above is repeated.");
+        input = next;
       }
+
       if (!state.finished) renderSummary();
     } catch (e) {
       const code = e && e.code ? e.code : "error";

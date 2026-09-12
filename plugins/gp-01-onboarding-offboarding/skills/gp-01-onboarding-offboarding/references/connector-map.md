@@ -45,6 +45,25 @@ call directly.
 So the shape of every step is: discover the action once, then execute it. Never assume a
 tool name for an app action — there is no such tool.
 
+### The execute arguments — verified 2026-09-12, get these right first time
+
+The execute tools take **`selected_api`, `action`, `instructions` and `params`**. Nothing
+else. Three calls failed on argument shape in the first live run before this was established,
+so use these names directly and do not improvise.
+
+Parameter names inside `params` are the action's own, and they are not the obvious ones.
+The Google Workspace Admin find-user action takes **`email_to_search_for`**, not `email`.
+When a call fails on shape, `discover_zapier_actions` is what tells you the real field
+names — read them, do not guess a second time.
+
+### The raw Directory API call is still reachable
+
+The Google Workspace Admin raw-request action is present and is called
+**`Make API Mutating Request`**. Confirmed live on 2026-09-12 by enumerating the app's
+actions. This is the action behind every raw call in SKILL.md — the account create, the
+profile `PUT` and the suspend — so the packaged-`create_user`-returns-403 workaround still
+works under the generic MCP model.
+
 ## The connection trap that has bitten this project twice
 
 **Zapier adds a connection on each authorise; it never replaces one, and it never changes
@@ -58,6 +77,19 @@ unused because the default was unset. In both cases the user had done the work c
 So: when an app behaves as though it was never reconnected, **check the default before
 anything else** — `list_zapier_connections`, then `manage_zapier_connections` with
 `default_connection_id`. Do not ask the user to authorise again.
+
+**Live state, checked 2026-09-12.** The Gmail default connection is
+`access-tools-and-subscription-manager@new-digital-intelligence.com` — **not** `peopleops@`.
+A `peopleops@new-digital-intelligence.com` connection exists and is not stale:
+
+```
+029c9ca6-45dc-8070-b7ce-2b305fe8b20f
+```
+
+**Pass that connection id explicitly on every send.** Do not change the tenant-wide default
+to fix this — the default belongs to the whole account and other things depend on it. An
+unset or wrong connection is the failure this project has already had twice, and on an email
+it is invisible: the send succeeds, from the wrong address, and only the joiner notices.
 
 ## One Slack workspace only
 
