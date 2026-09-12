@@ -20,22 +20,23 @@
   ],
 
   "_dbRules_note": [
-    "Run history carries employee names and what was done to their accounts. An offboarding",
-    "row tells every viewer that a named person was terminated, possibly before it is",
-    "announced. By default every viewer of a db artifact reads and writes all shared docs,",
-    "so that history would be visible to anyone the artifact is shared with.",
+    "EMPTY ON PURPOSE — asked for on 2026-09-13. Anyone the artifact is shared with can do",
+    "everything: run provisioning and read the full run history.",
     "",
-    "These rules keep the duplicate-run guard readable by everyone who can open the page,",
-    "and restrict `history` — the names and the full run log — to people with EDIT access.",
-    "Levels: view < interact (can view) < admin (can edit) < owner. The owner always passes.",
+    "What that means: run history carries employee names and what was done to their accounts,",
+    "so an offboarding row tells every viewer that a named person was terminated — possibly",
+    "before it is announced. The default for a db artifact is that every viewer reads and",
+    "writes all shared documents, and that is what an empty list restores.",
     "",
-    "A read below the minimum returns EMPTY rather than an error, so a view-only person sees",
-    "an empty history, not a permission message. The page says so in the empty state."
+    "To lock it down later, put these back and republish. Levels are view < interact (can",
+    "view) < admin (can edit) < owner; the owner always passes:",
+    "  { \"path\": \"\",        \"read\": \"interact\", \"write\": \"interact\" },",
+    "  { \"path\": \"history\", \"read\": \"admin\",    \"write\": \"admin\"    }",
+    "",
+    "A read below the minimum returns EMPTY rather than an error, so a blocked viewer sees an",
+    "empty history and not a permission message. The page's empty state changes to match."
   ],
-  "dbRules": [
-    { "path": "", "read": "interact", "write": "interact" },
-    { "path": "history", "read": "admin", "write": "admin" }
-  ],
+  "dbRules": [],
 
   "servers": [
     {

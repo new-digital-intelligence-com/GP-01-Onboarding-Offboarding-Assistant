@@ -130,7 +130,16 @@ const stamp = new Date().toISOString().slice(0, 16).replace("T", " ") + "Z · sk
 
 const page = readFileSync(srcFile, "utf8")
   .replace('"__SKILL_FILES__"', embed(skill))
-  .replace('"__MCP_MANIFEST__"', embed({ servers: enabled, staged }))
+  .replace(
+    '"__MCP_MANIFEST__"',
+    embed({
+      servers: enabled,
+      staged,
+      /* Drives the history empty state, which otherwise cannot tell "no runs yet"
+         apart from "your access level returned nothing". */
+      historyRestricted: Array.isArray(manifest.dbRules) && manifest.dbRules.length > 0,
+    }),
+  )
   .replace('"__BUILD_STAMP__"', embed(stamp));
 
 for (const token of ["__SKILL_FILES__", "__MCP_MANIFEST__", "__BUILD_STAMP__"]) {
@@ -186,9 +195,13 @@ console.log(
     JSON.stringify(capabilities, null, 2).split("\n").map((l) => "  " + l).join("\n"),
 );
 
-if (!(Array.isArray(manifest.dbRules) && manifest.dbRules.length)) {
+/* An empty `dbRules` is a decision; a missing one is an oversight. Only nag about the second. */
+if (!Array.isArray(manifest.dbRules)) {
   console.log(
-    `\n[build-artifact] WARNING: no dbRules — the run history (employee names, terminations)\n` +
-      `  will be readable by everyone the artifact is shared with.`,
+    `\n[build-artifact] WARNING: no dbRules key — the run history (employee names,\n` +
+      `  terminations) will be readable by everyone the artifact is shared with.\n` +
+      `  Set "dbRules": [] to say that is deliberate, or add rules to restrict it.`,
   );
+} else if (!manifest.dbRules.length) {
+  console.log(`\n[build-artifact] db is unrestricted — anyone the artifact is shared with reads the run history.`);
 }
