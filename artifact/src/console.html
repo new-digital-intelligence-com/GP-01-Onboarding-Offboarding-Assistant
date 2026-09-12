@@ -212,6 +212,75 @@
     color: var(--ink-3);
   }
 
+  /* ---- systems behind the connector --------------------------------------- */
+  .apps { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .apps-head { display: flex; align-items: center; gap: 12px; }
+  .apps-head .eyebrow { flex: 1; }
+  .apps-note { margin-top: 6px; font-size: 12.5px; color: var(--ink-3); max-width: 62ch; }
+  button.btn.tiny { padding: 5px 10px; font-size: 12px; }
+  .appchip {
+    font: 500 11.5px/1 var(--sans);
+    padding: 6px 9px;
+    border-radius: 3px;
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  .appchip.off { background: var(--surface-2); color: var(--ink-3); }
+
+  /* ---- run history -------------------------------------------------------- */
+  .history {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    margin-bottom: 22px;
+  }
+  .history > summary {
+    cursor: pointer;
+    padding: 12px 16px;
+    font: 600 13px/1 var(--sans);
+    color: var(--ink-2);
+  }
+  .historylist { border-top: 1px solid var(--line); padding: 6px 0; }
+  .histrow {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4px 16px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--line);
+    font-size: 13px;
+  }
+  .histrow:last-child { border-bottom: 0; }
+  .histrow .who { font-weight: 500; }
+  .histrow .meta { font: 400 11.5px/1.5 var(--mono); color: var(--ink-3); grid-column: 1; }
+  .histrow .tallies { font: 500 11.5px/1.5 var(--mono); text-align: right; white-space: nowrap; }
+  .histrow .tallies .v { color: var(--ok); }
+  .histrow .tallies .s { color: var(--warn); }
+  .histrow .tallies .f { color: var(--bad); }
+  .histempty { padding: 14px 16px; color: var(--ink-3); font-size: 13px; }
+
+  /* ---- ask box ------------------------------------------------------------ */
+  .askbox { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+  .askrow { display: flex; gap: 8px; margin-top: 7px; }
+  .askrow input {
+    flex: 1;
+    font: 400 14px/1.4 var(--sans);
+    padding: 9px 11px;
+    border: 1px solid var(--line-2);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--ink);
+  }
+  .askout {
+    margin-top: 12px;
+    padding: 13px 15px;
+    background: var(--surface-2);
+    border-radius: var(--radius);
+    font-size: 13.5px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
   /* ---- phase spine -------------------------------------------------------- */
   .spine { display: flex; gap: 2px; margin-bottom: 22px; }
   .phase {
@@ -427,8 +496,23 @@
     <div class="preflight-body">
       <ul class="checks" id="checks"></ul>
       <div class="toolgrid" id="toolgrid"></div>
+
+      <div class="apps">
+        <div class="apps-head">
+          <span class="eyebrow">Systems behind the connector</span>
+          <button class="btn tiny" id="appsBtn">Check</button>
+        </div>
+        <p class="apps-note" id="appsNote">One connector can carry many systems. This asks Zapier
+          which apps it can actually reach — a read-only call, nothing is written.</p>
+        <div class="toolgrid" id="appsGrid"></div>
+      </div>
     </div>
   </section>
+
+  <details class="history" id="historyPanel">
+    <summary>Recent runs</summary>
+    <div id="historyList" class="historylist"></div>
+  </details>
 
   <nav class="spine" id="spine" aria-label="Run phases">
     <button class="phase" data-step="0" aria-current="step"><span class="n">01</span><span class="label">Action</span></button>
@@ -576,6 +660,18 @@
       <summary>Claude's narration</summary>
       <pre id="narration">—</pre>
     </details>
+
+    <!-- The run log is the evidence; this is how you interrogate it without
+         leaving the page or starting a second run. -->
+    <section class="askbox hidden" id="askBox">
+      <label class="eyebrow" for="askInput">Ask Claude about this run</label>
+      <div class="askrow">
+        <input id="askInput" type="text" autocomplete="off"
+               placeholder="Why was Slack staged? What is left to do by hand?">
+        <button class="btn" id="askBtn">Ask</button>
+      </div>
+      <div class="askout" id="askOut" hidden></div>
+    </section>
 
     <div class="actions">
       <button class="btn danger hidden" id="stopBtn">Stop the run</button>
@@ -1350,6 +1446,8 @@
         staged: state.counts.STAGED,
         failed: state.counts.FAIL,
       });
+      await saveHistory(v);
+      if (state.caps.sample) $("askBox").classList.remove("hidden");
     }
   }
 
@@ -1395,6 +1493,198 @@
       if (e && e.code !== "cancelled" && e.code !== "not_granted") {
         showRunError("The file could not be saved: " + (e.message || e.code));
       }
+    }
+  }
+
+  /* -------------------------------------------- systems behind a connector
+     listTools() only ever sees this page's own manifest, so it can never tell
+     you about connectors the page did not declare. What it CAN do is ask a
+     declared connector what it carries — one Zapier connector fronts several
+     business systems, and which ones is a live fact, not a constant. */
+  async function loadApps() {
+    const mcp = state.caps.mcp;
+    const grid = $("appsGrid");
+    const note = $("appsNote");
+    grid.textContent = "";
+
+    if (!mcp) { note.textContent = "The connector bridge is not available in this view."; return; }
+
+    const server = MCP.servers.find((s) => s.tools.some((t) => /inspect.*action/i.test(t)));
+    if (!server) { note.textContent = "No declared connector exposes an inspect tool, so this cannot be asked."; return; }
+    const tool = server.tools.find((t) => /inspect.*action/i.test(t));
+
+    note.textContent = "Asking " + server.server + "…";
+    try {
+      const res = await mcp.callTool(server.server, tool, {});
+      const payload = res.payload !== undefined ? res.payload : res.content;
+      const apps = extractApps(payload);
+      if (apps.length) {
+        note.textContent = server.server + " reaches " + apps.length + " system" + (apps.length === 1 ? "" : "s") + ".";
+        for (const a of apps) {
+          const el = document.createElement("span");
+          el.className = "appchip";
+          el.textContent = a;
+          grid.append(el);
+        }
+      } else {
+        note.textContent = server.server + " answered, but the shape was not recognised. Raw reply:";
+        const pre = document.createElement("pre");
+        pre.style.cssText = "margin:10px 0 0;font:400 11px/1.5 var(--mono);white-space:pre-wrap;max-height:200px;overflow:auto;color:var(--ink-2)";
+        pre.textContent = clip(payload).slice(0, 4000);
+        grid.append(pre);
+      }
+    } catch (e) {
+      note.textContent = (e && e.code ? e.code + " — " : "") + (e && e.message ? e.message : "The call failed.");
+    }
+  }
+
+  /** The inspect reply's shape is not documented, so look for app-ish names in
+   *  the usual places and fall back to showing the raw payload. */
+  function extractApps(payload) {
+    const found = new Set();
+    const walk = (node, depth) => {
+      if (!node || depth > 6) return;
+      if (Array.isArray(node)) { node.forEach((n) => walk(n, depth + 1)); return; }
+      if (typeof node !== "object") return;
+      for (const key of Object.keys(node)) {
+        const val = node[key];
+        if (typeof val === "string" && /^(app|api|app_name|selected_api|service|provider)$/i.test(key)) {
+          if (val.trim()) found.add(val.trim());
+        } else {
+          walk(val, depth + 1);
+        }
+      }
+    };
+    try { walk(typeof payload === "string" ? JSON.parse(payload) : payload, 0); } catch { /* not JSON */ }
+    return [...found].sort();
+  }
+
+  /* ------------------------------------------------------------ run history */
+  async function saveHistory(v) {
+    const db = state.caps.db;
+    if (!db) return;
+    try {
+      await db.collection("history").doc().set({
+        at: new Date().toISOString(),
+        action: v.action,
+        subject: v.action === "offboard" ? v.workEmail : v.firstName + " " + v.lastName,
+        changeRef: state.finished ? state.finished.changeRef : "",
+        status: state.finished ? "complete" : "incomplete",
+        verified: state.counts.DONE,
+        staged: state.counts.STAGED,
+        failed: state.counts.FAIL,
+        calls: state.calls,
+        log: state.log.filter((l) => l.tag !== "CALL").slice(0, 120),
+      });
+    } catch { /* the on-screen log is still the record */ }
+  }
+
+  async function loadHistory() {
+    const db = state.caps.db;
+    const el = $("historyList");
+    el.textContent = "";
+
+    if (!db) {
+      el.innerHTML = "";
+      const p = document.createElement("div");
+      p.className = "histempty";
+      p.textContent = "Run history needs the db capability, which is not available in this view.";
+      el.append(p);
+      return;
+    }
+
+    try {
+      const snap = await db.collection("history").orderBy("at", "desc").limit(25).get();
+      if (snap.empty) {
+        const p = document.createElement("div");
+        p.className = "histempty";
+        p.textContent = "No runs recorded yet. Every run from this console is listed here once it ends.";
+        el.append(p);
+        return;
+      }
+      for (const doc of snap.docs) {
+        const d = doc.data() || {};
+        const row = document.createElement("div");
+        row.className = "histrow";
+
+        const who = document.createElement("span");
+        who.className = "who";
+        who.textContent = (d.action === "offboard" ? "Offboard · " : "Onboard · ") + (d.subject || "—");
+
+        const tallies = document.createElement("span");
+        tallies.className = "tallies";
+        const v = document.createElement("span"); v.className = "v"; v.textContent = (d.verified || 0) + "✓";
+        const s = document.createElement("span"); s.className = "s"; s.textContent = " " + (d.staged || 0) + "◷";
+        const f = document.createElement("span"); f.className = "f"; f.textContent = " " + (d.failed || 0) + "✕";
+        tallies.append(v, s, f);
+
+        const meta = document.createElement("span");
+        meta.className = "meta";
+        meta.textContent = [
+          String(d.at || "").slice(0, 16).replace("T", " "),
+          d.changeRef || "no ref",
+          d.status === "complete" ? "complete" : "INCOMPLETE",
+          (d.calls || 0) + " calls",
+        ].join("  ·  ");
+
+        row.append(who, tallies, meta);
+        el.append(row);
+      }
+    } catch (e) {
+      const p = document.createElement("div");
+      p.className = "histempty";
+      p.textContent = "Could not read the history: " + (e && e.message ? e.message : "unknown error");
+      el.append(p);
+    }
+  }
+
+  /* ----------------------------------------------------------- ask about it */
+  async function askClaude() {
+    const sample = state.caps.sample;
+    const q = $("askInput").value.trim();
+    const out = $("askOut");
+    if (!sample || !q) return;
+
+    $("askBtn").disabled = true;
+    out.hidden = false;
+    out.textContent = "Thinking…";
+
+    const v = values();
+    const context = [
+      "You are answering a question about ONE provisioning run that a People Ops operator just",
+      "watched in a console. Answer only from the run log below. If the log does not say, say so",
+      "plainly — never guess what happened to a real employee's account.",
+      "",
+      "Be short. Plain text, no markdown headings.",
+      "",
+      "Run: " + (v.action === "offboard" ? "offboard " + v.workEmail : "onboard " + v.firstName + " " + v.lastName),
+      "Change ref: " + (state.finished && state.finished.changeRef ? state.finished.changeRef : "none — the run did not finish"),
+      "Tallies: " + state.counts.DONE + " verified, " + state.counts.STAGED + " staged, " + state.counts.FAIL + " failed.",
+      "",
+      "DONE means it was executed and read back. STAGED means a named human owes the work.",
+      "FAIL means the system errored and a retry may fix it. A STEP with no matching DONE was",
+      "started but never confirmed.",
+      "",
+      "Run log:",
+      runLogText() || "(empty — nothing was logged)",
+      "",
+      "Question: " + q,
+    ].join("\n");
+
+    try {
+      await sample(context, {
+        modelTier: "quick",
+        onText: ({ text }) => { out.textContent = text; },
+      });
+    } catch (e) {
+      const code = e && e.code ? e.code : "error";
+      out.textContent = code === "not_granted"
+        ? "You declined to let this page ask Claude. Reload the page to be asked again."
+        : code === "rate_limited"
+          ? "Too many questions at once. Wait a moment and ask again."
+          : (e && e.text) || ((e && e.message) || "The question could not be answered.") + " (" + code + ")";
+    } finally {
+      $("askBtn").disabled = false;
     }
   }
 
@@ -1566,6 +1856,15 @@
   $("recheckBtn").addEventListener("click", () => { preflight(); });
   $("stopBtn").addEventListener("click", () => { if (state.abort) state.abort.abort(); });
   $("restartBtn").addEventListener("click", () => { renderDetails(); goto(0); });
+
+  $("appsBtn").addEventListener("click", () => { loadApps(); });
+  $("historyPanel").addEventListener("toggle", () => {
+    if ($("historyPanel").open) loadHistory();
+  });
+  $("askBtn").addEventListener("click", () => { askClaude(); });
+  $("askInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); askClaude(); }
+  });
 
   $("reportBtn").addEventListener("click", () => {
     const f = state.finished;
