@@ -1596,9 +1596,13 @@
     try {
       const snap = await db.collection("history").orderBy("at", "desc").limit(25).get();
       if (snap.empty) {
+        /* A read below the rule's level returns empty rather than an error, so an
+           empty list has two meanings and the page must not claim only one. */
         const p = document.createElement("div");
         p.className = "histempty";
-        p.textContent = "No runs recorded yet. Every run from this console is listed here once it ends.";
+        p.textContent = "Nothing to show. Either no run has finished yet, or you have view-only " +
+          "access — run history is restricted to people who can edit this artifact, because it " +
+          "carries employee names and terminations.";
         el.append(p);
         return;
       }

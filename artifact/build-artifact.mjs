@@ -167,8 +167,28 @@ if (unverified.length) {
   );
 }
 
+/**
+ * Printed whole so the publish step is a copy-paste, not four things to remember.
+ * db rules in particular are easy to leave off, and leaving them off silently makes
+ * the run history — employee names, terminations — readable by every viewer.
+ */
+const capabilities = {
+  mcp: { servers: enabled.map((s) => ({ server: s.server, tools: s.tools })) },
+  sample: {},
+  db: Array.isArray(manifest.dbRules) && manifest.dbRules.length
+    ? { rules: manifest.dbRules }
+    : {},
+  downloads: true,
+};
+
 console.log(
-  `\n[build-artifact] capabilities.mcp for the Artifact tool:\n` +
-    JSON.stringify({ servers: enabled.map((s) => ({ server: s.server, tools: s.tools })) }, null, 2)
-      .split("\n").map((l) => "  " + l).join("\n"),
+  `\n[build-artifact] capabilities for the Artifact tool — pass this whole object:\n` +
+    JSON.stringify(capabilities, null, 2).split("\n").map((l) => "  " + l).join("\n"),
 );
+
+if (!(Array.isArray(manifest.dbRules) && manifest.dbRules.length)) {
+  console.log(
+    `\n[build-artifact] WARNING: no dbRules — the run history (employee names, terminations)\n` +
+      `  will be readable by everyone the artifact is shared with.`,
+  );
+}

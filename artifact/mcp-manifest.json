@@ -19,6 +19,24 @@
     "call, or only transcribed from references/connector-map.md."
   ],
 
+  "_dbRules_note": [
+    "Run history carries employee names and what was done to their accounts. An offboarding",
+    "row tells every viewer that a named person was terminated, possibly before it is",
+    "announced. By default every viewer of a db artifact reads and writes all shared docs,",
+    "so that history would be visible to anyone the artifact is shared with.",
+    "",
+    "These rules keep the duplicate-run guard readable by everyone who can open the page,",
+    "and restrict `history` — the names and the full run log — to people with EDIT access.",
+    "Levels: view < interact (can view) < admin (can edit) < owner. The owner always passes.",
+    "",
+    "A read below the minimum returns EMPTY rather than an error, so a view-only person sees",
+    "an empty history, not a permission message. The page says so in the empty state."
+  ],
+  "dbRules": [
+    { "path": "", "read": "interact", "write": "interact" },
+    { "path": "history", "read": "admin", "write": "admin" }
+  ],
+
   "servers": [
     {
       "server": "Zapier",
