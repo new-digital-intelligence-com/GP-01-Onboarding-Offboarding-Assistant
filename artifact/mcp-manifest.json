@@ -24,32 +24,17 @@
       "server": "Zapier",
       "enabled": true,
       "verified": false,
-      "purpose": "Google Workspace Admin, Gmail as peopleops@, and the Google Sheets provisioning register",
-      "systems": ["Google Workspace", "Gmail", "Google Sheets"],
+      "purpose": "Every system. Slack stays here rather than on the native Claude Slack connector, which has no tool to add or remove a channel member — see references/connector-map.md.",
+      "systems": ["Google Workspace", "Gmail", "Slack", "Google Sheets"],
       "tools": [
         "inspect_zapier_actions",
         "list_zapier_connections",
         "manage_zapier_connections",
         "google_workspace_admin_cli_api_zap_raw_request",
         "google_mail_v2_cli_api_zap_raw_request",
+        "slack_cli_api_zap_raw_request",
         "google_sheets_v2_cli_api_zap_raw_request"
       ]
-    },
-    {
-      "server": "Slack",
-      "enabled": false,
-      "verified": false,
-      "purpose": "Welcome and farewell posts, user lookup by email, channel membership",
-      "systems": ["Slack"],
-      "tools": []
-    },
-    {
-      "server": "Effy",
-      "enabled": false,
-      "verified": false,
-      "purpose": "HR record — create the employee, set job information, mark a leaver terminated",
-      "systems": ["Effy"],
-      "tools": []
     }
   ]
 }

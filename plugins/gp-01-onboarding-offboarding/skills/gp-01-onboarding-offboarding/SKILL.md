@@ -1,6 +1,6 @@
 ---
 name: gp-01-onboarding-offboarding
-description: Run NDI's GP-01 "Onboarding and Offboarding Assistant" end to end — create the HR record and Google Workspace account for a new joiner, send their sign-in and welcome emails, and post their Slack welcome; and for a leaver, suspend access, hand over their work and report what remains. Trigger on /gp-01, "GP-01", "Onboarding and Offboarding Assistant", on an HR new-hire or termination notice, or on a request to onboard, offboard, deprovision or revoke access. A bare @new-digital-intelligence.com email address means offboard that person; a name plus a role means onboard. Never asks permission and never asks a clarifying question — it resolves everything from the live systems, executes, and reports what it did with its assumptions listed.
+description: Run NDI's GP-01 "Onboarding and Offboarding Assistant" end to end — create the Google Workspace account for a new joiner, record them in the provisioning register, send their sign-in and welcome emails, and post their Slack welcome; and for a leaver, suspend access, revoke what can be revoked and report what remains. Trigger on /gp-01, "GP-01", "Onboarding and Offboarding Assistant", on an HR new-hire or termination notice, or on a request to onboard, offboard, deprovision or revoke access. A bare @new-digital-intelligence.com email address means offboard that person; a name plus a role means onboard. Never asks permission and never asks a clarifying question — it resolves everything from the live systems, executes, and reports what it did with its assumptions listed.
 ---
 
 # GP-01  —  Onboarding and Offboarding Assistant
@@ -19,8 +19,8 @@ never claim a capability that isn't there.** Everything below is in service of t
 | A name plus a role | **Joiner** |
 | An HR notification | Read it — new hire → joiner, termination → leaver |
 
-Resolve the person against Google Workspace and BambooHR **before acting**, so the run
-always knows who it is operating on.
+Resolve the person against Google Workspace and the provisioning register **before acting**,
+so the run always knows who it is operating on.
 
 ### The manager
 
@@ -32,13 +32,9 @@ Take the manager from the trigger. It may be given as an email, a name, or not a
 | `manager Jane Doe` | Look the name up in the Google directory to get the address |
 | Nothing | **Default: `helmi.lakhder@new-digital-intelligence.com`** |
 
-You need the manager in **two forms**, so derive whichever is missing with a directory
-lookup and never guess one from the other's spelling:
-
-- **Email** — for the Google Workspace `relations` manager entry, and the cc on the
-  welcome email.
-- **Full name** — for BambooHR `reportsTo`, which takes a display name and rejects an
-  address.
+You need the manager's **email** — for the Google Workspace `relations` manager entry, and
+for the cc on the welcome email. If the trigger gave a name instead, look it up in the
+directory to get the address; never guess an address from a name's spelling.
 
 **Verify the manager exists before using them.** Look the address up in the Google
 directory. If it does not resolve, do not invent one and do not cc a dead address: fall
@@ -152,14 +148,19 @@ This was established by live testing. Do not re-derive it, and do not promise mo
 | Google Workspace: revoke sessions (`signOut`) | ❌ needs `admin.directory.user.security`, which Zapier never requests |
 | Google Workspace: mailbox delegation to manager | ❌ needs `gmail.settings.sharing` — not granted |
 | Google Drive: transfer file ownership | ❌ needs the Data Transfer API — not granted |
-| BambooHR: create / update employee | ✅ |
-| BambooHR: delete employee | ❌ no such action |
+| Google Sheets: append / update register rows | ✅ **via Zapier** |
 | Gmail: send | ✅ **via Zapier as `peopleops@`** — not the native connector |
 | Slack: post messages | ✅ **via Zapier** on `new-digital-int` — not the native connector |
 | Slack: add existing member to a channel | ✅ Zapier `channels_invite_v2` |
 | Slack: invite a new person to the workspace | ❌ Raw endpoints return `not_allowed_token_type`, and no connected tool exposes an invite. IT Operations sends it by hand, or they self-serve at the signup link when domain sign-up is on |
 | Slack: deactivate a member | ❌ `not_allowed_token_type` |
 | Slack: remove from a channel | ✅ Zapier `slack_remove_user_from_channel` (`userId` + `channelId`) — **only for channels the acting Slack identity has joined**; elsewhere it fails *"neither you nor the bot are in the selected channel"* |
+
+**There is no HR system.** NDI has no HRIS in this scope. The Google Workspace account
+carries the employee's job title, department and manager; the provisioning register in
+Google Sheets is the record of what was granted and revoked. Between them they are the
+whole record — do not look for an HR system to write to, and do not report its absence as
+a failure.
 
 ### Creating a Google account — use the raw API
 
@@ -181,52 +182,6 @@ PUT https://admin.googleapis.com/admin/directory/v1/users/{email}
 ```
 Both go through Zapier's Google Workspace Admin raw-request action. Read the user back
 afterwards and confirm every field persisted.
-
-### BambooHR job fields are effective-dated — write them to the tables
-
-`jobTitle`, `department`, `reportsTo` and `employmentHistoryStatus` are **not** plain
-fields on the employee record. They are rows in effective-dated tables, and BambooHR
-resolves the top-level field to whatever row is in effect *today*.
-
-Two consequences, both verified against the live tenant:
-
-1. **`employeeCreate` does not persist them.** Pass name, hire date, work email and home
-   email there; then write the job information as table rows:
-
-   ```
-   POST /v1/employees/{id}/tables/jobInfo          (Content-Type: application/xml)
-     <row><field id="date">{hireDate}</field>
-          <field id="jobTitle">{role}</field>
-          <field id="department">{dept}</field>
-          <field id="reportsTo">{manager full name}</field></row>
-
-   POST /v1/employees/{id}/tables/employmentStatus
-     <row><field id="date">{hireDate}</field>
-          <field id="employmentStatus">Full-Time</field></row>
-   ```
-   `reportsTo` takes the manager's **full name**, not an email and not an employee ID.
-   Post each table **once** — repeating the call adds a duplicate row at the same date.
-
-2. **Verify by reading the tables, never the top-level fields.** For a future-dated
-   joiner the top-level `jobTitle` is *correctly* blank until their start date, so a
-   read-back of `/employees/{id}?fields=jobTitle` looks like a failure when nothing has
-   failed. Read `/employees/{id}/tables/jobInfo` and confirm the row exists with the right
-   values, and report it as stored — mentioning that it becomes current on the start date.
-
-   Reporting "the picklist dropped it" off the back of a blank top-level field is a false
-   alarm. It has already happened once.
-
-The picklists do matter — a value that is not an option is stored empty. Valid job titles
-include `AI Engineer`, `Marketing Analyst`, `Solution Architect`; valid departments
-include `Engineering`, `Marketing`, `Delivery`. Check the row you wrote actually carries
-the value.
-
-**Dates can shift by a day.** BambooHR resolves dates in its own tenant timezone, so a
-date sent as the 26th may store as the 27th. Read the stored date back and report the
-stored value, not the one you sent.
-
-**Home email must be unique.** A duplicate returns `409`. If it collides, leave it unset,
-say whose record already holds it, and carry on — it is not worth failing a run over.
 
 ## Sending — always through Zapier, always as People Ops
 
@@ -277,8 +232,8 @@ should be reported as "out of POC scope", not as staged work anybody owes:
 
 | In scope | Out of scope |
 |---|---|
-| BambooHR employee record + job-info rows | Slack channel memberships |
-| Google Workspace account + profile | Shared drives, distribution lists, SaaS seats |
+| Google Workspace account + profile | Slack channel memberships |
+| Register rows for every item | Shared drives, distribution lists, SaaS seats |
 | Sign-in email → personal address | Everything else |
 | Welcome email → work address | |
 | One Slack welcome message | |
@@ -288,7 +243,7 @@ should be reported as "out of POC scope", not as staged work anybody owes:
 | In scope | Out of scope |
 |---|---|
 | Suspend the Google Workspace account | Drive handover, shared drives, SaaS seats |
-| Mark Terminated in BambooHR | Slack account **deactivation** — impossible, staged |
+| Revoke rows in the register | Slack account **deactivation** — impossible, staged |
 | **Slack: look them up and report their channels** | |
 | **Slack: remove them from the channels we can reach** | |
 | Farewell email → personal address | |
@@ -308,11 +263,12 @@ failure against that step and carry on with everything that does not depend on i
 that stops at the first error leaves the joiner with nothing; a run that continues leaves
 them with almost everything and a short, honest list of what to retry.
 
-**BambooHR in particular is never a blocker.** Nothing else in the run depends on the HR
-record — not the account, not the emails, not Slack. If BambooHR is unreachable, its
-connection is broken, or a table write fails: say so plainly, mark it `failed` with the
-error, and complete the entire rest of the process. Someone adds the HR record by hand
-later, or re-runs once it is fixed. Never abandon an onboarding over it.
+**The register in particular is never a blocker.** Nothing else in the run depends on it —
+not the account, not the emails, not Slack. If Sheets is unreachable, its connection is
+broken, or the append fails: say so plainly, mark it `failed` with the error, put the rows
+you could not write into the summary so they are not lost, and complete the entire rest of
+the process. Someone pastes them in by hand later, or re-runs once it is fixed. Never
+abandon an onboarding over the register.
 
 ### What genuinely depends on what
 
@@ -320,11 +276,11 @@ Only these are real dependencies. Everything else is independent and runs regard
 
 | If this fails | Then this cannot run | Everything else |
 |---|---|---|
-| Google account creation | Welcome email (no mailbox), sign-in email (no credentials) | Still runs — Slack post, HR record |
-| Nothing | — | BambooHR, Slack and the emails are independent of each other |
+| Google account creation | Welcome email (no mailbox), sign-in email (no credentials) | Still runs — Slack post, register rows |
+| Nothing | — | The register, Slack and the emails are independent of each other |
 
-So a Google failure is the one that really hurts, and even then the Slack post and the HR
-record still go ahead. Report it as `failed`, not `staged` — staged means a human owes the
+So a Google failure is the one that really hurts, and even then the Slack post and the
+register rows still go ahead. Report it as `failed`, not `staged` — staged means a human owes the
 work; failed means the system errored and a retry may well fix it. They are different
 things and the reader needs to know which.
 
@@ -338,20 +294,14 @@ looked like it might have worked. Read it back or call it unverified.
 1. **Resolve context.** Derive the work email from the name. List the **real** Slack
    channels before referring to any of them — never name a channel that does not exist,
    and never create one.
-2. **BambooHR record** — `employeeCreate` with name, job title, department, hire date,
-   work email, home email, `employmentHistoryStatus: Full-Time`. Then write **one**
-   `jobInfo` table row carrying job title, department and `reportsTo` together — the
-   manager is part of that row, not a separate update. Read back from the tables.
-
-   **Do not reach for the packaged BambooHR update action to set the manager.** It wants
-   the manager passed through `dynamic_properties`, which needs employee-record context
-   the run does not have, so the call fails and the retry costs a step. The `jobInfo`
-   table write takes the manager's full name directly and is the known-good path.
-3. **Google Workspace account** — the two raw calls above. Generate an 18-character
-   password, force reset at first login. Read back.
-4. **Sign-in email → personal address only.** From `peopleops@`, **no cc**. Work address,
+2. **Google Workspace account** — the two raw calls above. Generate an 18-character
+   password, force reset at first login. The profile `PUT` is what records their job
+   title, department and manager: there is no HR system behind it, so a field dropped
+   there is lost, not recoverable from somewhere else. Read the user back and confirm
+   every field persisted.
+3. **Sign-in email → personal address only.** From `peopleops@`, **no cc**. Work address,
    temporary password, the forced-reset note, and a prompt to enable 2FA.
-5. **Welcome email → the new work address**, from `peopleops@`, cc the verified manager.
+4. **Welcome email → the new work address**, from `peopleops@`, cc the verified manager.
 
    **Check before promising Slack self-signup.** Call `team.info` and read `email_domain`:
 
@@ -370,13 +320,15 @@ looked like it might have worked. Read it back or call it unverified.
    never copy a URL out of an old email or an earlier run.
 
    The rest of the email: what is ready, what is coming, and who to ask.
-6. **Slack welcome message** — posted to the GP-01 channel
+5. **Slack welcome message** — posted to the GP-01 channel
    `#ai-employee-gp-01-onboarding-and-offboarding-assistant` on `new-digital-int`.
-7. **Provisioning register** — one row per item, automatic and manual alike, with owners.
+6. **Provisioning register** — one row per item, automatic and manual alike, with owners.
+   **This is the only written record of the run**, so never skip it and never summarise
+   several items into one row.
    **The register is a single worksheet.** There is no `JOIN` tab and no `LEAVE` tab —
    joiner and leaver rows live together and are told apart by the `ChangeRef` column.
    Append to the first worksheet; do not search for a per-action tab and do not create one.
-8. **Summary** — what ran, what is outstanding and on whom, and an **Assumptions** block.
+7. **Summary** — what ran, what is outstanding and on whom, and an **Assumptions** block.
 
 ### Pass 2 — re-trigger once they have joined
 
@@ -391,32 +343,29 @@ Look the person up in Slack by email.
 
 Five things. Nothing else in this scope.
 
-1. **Resolve and check the guards.** Look the email up in Google Workspace and BambooHR.
-   Stop if it is the person triggering the run, if `isAdmin` or `isDelegatedAdmin` is true,
-   or if it resolves to nobody or to more than one person.
+1. **Resolve and check the guards.** Look the email up in Google Workspace, and find their
+   joiner rows in the register by `ChangeRef`. Stop if it is the person triggering the run,
+   if `isAdmin` or `isDelegatedAdmin` is true, or if it resolves to nobody or to more than
+   one person.
 
    **Take their personal address now** — the Google account's `recoveryEmail` — before
    anything is suspended. This is the same address their sign-in instructions went to, and
    it is where the farewell goes.
 
-   Confirm the last working day from BambooHR. If there is none, use today and say so. If
-   it falls before the hire date, call it a cancelled-before-start case and expect the
-   Slack check to come back empty.
+   **The last working day comes from the trigger, or it is today.** There is no HR system
+   to ask, so do not go looking for one: if the trigger names a date, use it; otherwise use
+   today and say so under Assumptions. If it falls before the account was created, call it
+   a cancelled-before-start case and expect the Slack check to come back empty.
 
 2. **Suspend the Google Workspace account** — `PUT {"suspended": true}`. This is the step
    that actually stops access. Never delete: deletion is a human decision after the
    retention window, and it cannot be undone.
 
-3. **Mark Terminated in BambooHR** — a row in the `employmentStatus` table, not a field on
-   the record:
-
-   ```
-   POST /v1/employees/{id}/tables/employmentStatus
-     <row><field id="date">{last working day}</field>
-          <field id="employmentStatus">Terminated</field></row>
-   ```
-   Read it back and report the **stored** date; BambooHR resolves dates in its own
-   timezone and can shift one by a day.
+3. **Close out the register.** Write one `revoke` row per item you actually revoked, and
+   set `Status` on each from `approval-gates.md` — `verified` only where you read the
+   change back. The register is the termination record; there is nowhere else it is
+   written down, so a run that suspends the account but never writes the rows leaves no
+   trace that the person left.
 
 4. **Farewell email → their personal address**, from `peopleops@`, cc the verified
    manager. Thanks,
@@ -468,7 +417,7 @@ Five things. Nothing else in this scope.
   Those are organisational decisions with owners.
 - Never grant approval-gated access on an inference. Tag it `blocked` with the approver
   named and carry on with the rest.
-- A missing connector removes that step, not the run. The HR record, the account, the
+- A missing connector removes that step, not the run. The register rows, the account, the
   emails, the Slack post and the summary are produced every time.
 - If two systems disagree, report both as a flagged conflict rather than picking one.
 - Detail on connectors and statuses is in `references/connector-map.md`,
@@ -492,4 +441,4 @@ it rather than posting to the wrong place.
 | Slack workspace | New Digital Intelligence — `new-digital-int` (`T0BG8HX3E0G`) |
 | Slack signup link | `https://new-digital-int.slack.com/signup` — include it **only** when `team.info.email_domain` is set (it is currently empty, so normally omit it) |
 | Slack welcome channel | `#ai-employee-gp-01-onboarding-and-offboarding-assistant` (`C0BSWDA5389`) |
-| BambooHR company | `ndi` |
+| Provisioning register | `NDI Provisioning Register` in Drive — the only written record of a run |

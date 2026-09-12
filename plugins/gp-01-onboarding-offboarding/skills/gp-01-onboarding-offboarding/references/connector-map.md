@@ -16,7 +16,6 @@ is identical whoever triggers it and nobody connects anything.
 | Google Workspace Admin | `GoogleWorkspaceAdminCLIAPI` | Create the account, set the profile, suspend on offboarding |
 | Gmail | `GoogleMailV2CLIAPI` | Sign-in, welcome and farewell emails — **as `peopleops@`** |
 | Slack | `SlackCLIAPI` | Welcome and farewell posts, user and channel lookups |
-| BambooHR | `BambooHRCLIAPI` | Employee record, job-info and employment-status rows |
 | Google Sheets | `GoogleSheetsV2CLIAPI` | Provisioning register |
 
 Check connections at the start of a run with `inspect_zapier_actions`. If an app reports
@@ -68,26 +67,6 @@ create — send them in a second `PUT`, then read the user back.
 
 **Suspend, never delete.** Deletion is a human decision after the retention window.
 
-## BambooHR: effective-dated tables, not fields
-
-`jobTitle`, `department`, `reportsTo` and `employmentHistoryStatus` are rows in
-effective-dated tables. BambooHR resolves the top-level field to whatever row is in effect
-*today*, so for a future-dated joiner the top-level `jobTitle` is **correctly blank** until
-their start date. Reading it and reporting failure is a false alarm — that happened once.
-
-- Write to `/employees/{id}/tables/jobInfo` and `/employees/{id}/tables/employmentStatus`
-- `reportsTo` takes the manager's **full name**, not an email or an ID
-- **Set `reportsTo` in the `jobInfo` row itself, not through the packaged update action.**
-  The packaged action requires the manager to be supplied via `dynamic_properties`, which
-  needs employee-record context a mid-run call does not have; it fails and the model burns
-  a step retrying. Same shape of trap as Google's packaged `create_user` above: the direct
-  write works, the convenience wrapper does not
-- Post each table **once** — repeating adds a duplicate row at the same date
-- Verify by reading **the tables**
-- Dates resolve in BambooHR's timezone and can shift a day — report the stored value
-- Home email must be unique; a duplicate returns `409`. Leave it unset and carry on
-- There is no delete
-
 ## Slack: what is and is not possible
 
 | Action | Status |
@@ -99,6 +78,33 @@ their start date. Reading it and reporting failure is a false alarm — that hap
 | Self-signup at the workspace link | ⚠️ **Only if `team.info.email_domain` is set.** On `new-digital-int` it is currently empty, so the signup page refuses with *"administrator has not enabled email sign-ups"*. Read `email_domain` before offering the link — do not carry the answer over from another workspace or an earlier run |
 | Deactivate a member | ❌ `users.admin.setInactive` → `not_allowed_token_type`. The leaver keeps the workspace account; only channel membership can be revoked |
 | Remove from a channel | ✅ `slack_remove_user_from_channel` (`userId` + `channelId`). **Only works for channels the acting Slack identity has joined** — elsewhere it fails *"neither you nor the bot are in the selected channel"*, which is a membership problem, not a token one. Add the acting identity to a channel and removal there becomes automatic |
+
+### Why Slack is not on the native Claude connector
+
+This was looked at properly (2026-09-12) and rejected. The claude.ai Slack connector is
+Slack's own hosted MCP server (`mcp.slack.com/mcp`) and exposes 11 tools, of which exactly
+one is a non-canvas write: `slack_send_message`. It has **no tool to add a member to a
+channel and no tool to remove one**, so both membership writes GP-01 depends on — joiner
+pass 2 and the leaver sweep — disappear. It also has no `team.info` equivalent, so the
+`T0BG8HX3E0G` workspace guard below has nothing to check against, and its scopes are
+user-token scopes, meaning posts would carry the name of whoever triggered the run rather
+than a fixed service identity.
+
+It does offer things Zapier does not — private-channel search, thread reads, canvases, and
+no connection-default drift. None of them is worth losing revocation. Revisit only if Slack
+exposes invite/kick tools on that server.
+
+## There is no HR system
+
+NDI has no HRIS in this scope. BambooHR was removed on 2026-09-12; nothing replaced it.
+
+- Employee attributes — job title, department, manager — live on the **Google Workspace
+  account**, written by the profile `PUT`.
+- What was granted and revoked lives in the **provisioning register** (Google Sheets).
+
+Those two are the whole record. Do not look for an HR system to write to, do not report its
+absence as a failure or a staged item, and do not add one back without also writing down
+what was verified about it.
 
 ## Scopes Zapier's Google Workspace app never requests
 

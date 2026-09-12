@@ -13,6 +13,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const skillDir = join(
@@ -114,7 +115,18 @@ if (!enabled.length) {
 /** `</script>` inside embedded JSON would close the tag early. */
 const embed = (value) => JSON.stringify(value).replace(/</g, "\\u003c");
 
-const stamp = new Date().toISOString().slice(0, 16).replace("T", " ") + "Z";
+/**
+ * The published artifact carries a BUILD-TIME COPY of the skill. The plugin updates itself
+ * on commit SHA; the artifact does not update at all until somebody rebuilds and
+ * republishes it. So the page shows the hash of the skill it was built from: run the build
+ * again and compare, and a mismatch means the published page is running an old skill.
+ */
+const skillHash = createHash("sha256")
+  .update(FILES.map((rel) => rel + "\0" + (skill[rel] ?? "")).join("\0"))
+  .digest("hex")
+  .slice(0, 8);
+
+const stamp = new Date().toISOString().slice(0, 16).replace("T", " ") + "Z · skill " + skillHash;
 
 const page = readFileSync(srcFile, "utf8")
   .replace('"__SKILL_FILES__"', embed(skill))

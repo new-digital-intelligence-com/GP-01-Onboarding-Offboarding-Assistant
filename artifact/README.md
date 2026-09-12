@@ -1,18 +1,19 @@
 # GP-01 as a Claude Artifact
 
 A published Claude Artifact that runs GP-01 with no web app, no deployment and no login to
-build. It is a third surface on the same skill — chat, the Next.js console, and this — and
-like the console it **contains no provisioning logic**. It hands the skill to Claude and
+build. It is the second surface on the same skill — Claude chat is the other — and like the
+skill itself it **contains no provisioning logic**. It hands the skill to Claude and
 forwards tool calls to the viewer's Zapier connector.
 
 ```
 plugins/…/SKILL.md ──┬─→ Claude chat / Claude Code   (the plugin)
-                     ├─→ app/  console               (embed-skill.mjs → skill.generated.ts)
                      └─→ artifact/  this page        (build-artifact.mjs → dist/…html)
+
+                        app/ is a retired Next.js console, no longer maintained.
 ```
 
-If the page behaves wrongly, fix `SKILL.md`. Nothing here knows what a BambooHR table row
-is, and nothing here should ever learn.
+If the page behaves wrongly, fix `SKILL.md`. Nothing here knows what a Directory API
+payload looks like, and nothing here should ever learn.
 
 ## Build
 
@@ -32,6 +33,29 @@ fails rather than producing a broken page if the skill has outgrown `sample()`'s
 
 `dist/` is git-ignored. Never edit it.
 
+## The artifact does not auto-update — the plugin does
+
+This is the one thing that will bite you. They are distributed completely differently:
+
+| | Plugin | Artifact |
+|---|---|---|
+| How people get it | Each person installs it from the marketplace | One link, published once |
+| Ships with `artifact/`? | **No** — the plugin is only `plugins/…/`, so `artifact/` never travels with it. That is fine: nobody installs the artifact. |
+| On a skill edit | Updates itself on the next commit SHA (no `version` in plugin.json — deliberate) | **Nothing happens.** It keeps the copy it was built with |
+
+So **after every change to `SKILL.md` or a reference file:**
+
+```bash
+node artifact/build-artifact.mjs     # then republish to the SAME artifact url
+```
+
+Otherwise chat runs the new skill and the artifact runs the old one, and the two disagree
+without saying so.
+
+To check a live page: the build prints a skill hash (`skill 1a2b3c4d`) and the page shows
+the same hash in its top-right corner. Run the build and compare. Different hash = the
+published page is stale.
+
 ## How the run actually works
 
 There is no server. The published page:
@@ -47,16 +71,15 @@ The five tools Claude is given:
 
 | Tool | What it does |
 |---|---|
-| `zapier_list_tools` | The exact reachable tool names, so Claude never guesses one |
-| `zapier_call` | `{tool, input}` → `mcp.callTool`. The only way into any system |
+| `list_systems` | Every reachable connector, what it carries, and its exact tool names |
+| `call_system` | `{connector, tool, input}` → `mcp.callTool`. The only way into any system |
 | `log_event` | Renders one `STEP` / `DONE` / `FAIL` / `STAGED` / `ASSUME` row |
 | `new_password` | One `crypto.getRandomValues` 18-character password |
 | `finish_run` | Counts, ChangeRef, completion report, register rows |
 
-`zapier_call` is a **passthrough**. It validates the tool name against the manifest and
+`call_system` is a **passthrough**. It validates connector and tool against the manifest and
 forwards the arguments object untouched, so no Zapier argument shape is encoded in this
-page — the skill text is where Claude learns the raw Directory API and BambooHR table
-calls, exactly as in chat.
+page — the skill text is where Claude learns the raw Directory API calls, exactly as in chat.
 
 This also replaces the console's most fragile part. `app/` parses `STEP`/`DONE` prefixes out
 of a text stream and needs a lookahead regex because Claude glues tags together
@@ -110,7 +133,7 @@ From the account that will own it:
 Artifact({
   file_path: "artifact/dist/gp-01-console.html",
   favicon: "🔐",
-  description: "Runs NDI's GP-01 joiner and leaver provisioning against Google Workspace, BambooHR and Slack.",
+  description: "Runs NDI's GP-01 joiner and leaver provisioning against Google Workspace, Gmail, Slack and the provisioning register.",
   capabilities: {
     mcp: { servers: [{ server: "Zapier", tools: [ /* exactly the list in mcp-manifest.json */ ] }] },
     sample: {},
@@ -143,10 +166,10 @@ if that distinction matters at NDI, it has to be handled by who the connector is
   it states each system and each action in full before the button.
 - **Repeat runs.** Pass 2 of the joiner workflow is a legitimate re-run, so a prior
   completed run is a warning, not a block. The warning says plainly that a repeated
-  BambooHR table write adds a duplicate row.
+  run appends a duplicate set of register rows.
 - **Ambiguous writes.** `server_unavailable` and `upstream_error` on a write are not proof
   the call did not run. The prompt tells Claude to read back rather than blind-retry, and
-  the page never auto-retries a `zapier_call`.
+  the page never auto-retries a `call_system`.
 - **Tab close ends the run.** There is no server-side continuation. Steps already reported
   `DONE` did happen; nothing after that point ran. The run record in `db` is marked
   `incomplete` so the next Review step shows it.
@@ -159,7 +182,7 @@ connector was connected in the authoring session. Two things therefore need a re
 before you trust the page in front of a new hire:
 
 1. The tool names in `mcp-manifest.json` (see above).
-2. That a `zapier_call` payload comes back in the shape the skill expects. `zapier_call`
+2. That a `call_system` payload comes back in the shape the skill expects. `call_system`
    returns `result.payload` and falls back to `result.content`; if your connector returns
    something else, that is the one line to adjust.
 

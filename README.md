@@ -1,7 +1,7 @@
 # GP-01 — Onboarding & Offboarding Assistant
 
-NDI's GP-01 AI Employee, published as a Claude plugin. For a joiner it creates the BambooHR
-record and the Google Workspace account, sends the sign-in and welcome emails, posts the
+NDI's GP-01 AI Employee, published as a Claude plugin. For a joiner it creates the Google Workspace
+account and records them in the provisioning register, sends the sign-in and welcome emails, posts the
 Slack welcome. For a leaver it suspends access,
 arranges handover and reports honestly on what could not be automated.
 

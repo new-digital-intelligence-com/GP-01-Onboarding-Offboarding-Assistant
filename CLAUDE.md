@@ -6,7 +6,7 @@
 perform provisioning; it calls the Claude API with the skill as the system prompt and the
 same MCP connectors the skill uses in chat.
 
-Never add a Google, BambooHR or Slack client to `app/`. The moment a provisioning
+Never add a Google, Slack or Sheets client to a surface. The moment a provisioning
 step exists in TypeScript as well as in the skill, GP-01 exists twice and the copies drift —
 every fix has to be made in both, and the app quietly becomes the worse one. If the console
 behaves wrongly, fix SKILL.md.
@@ -61,9 +61,9 @@ the Root Directory* must be on, or `prebuild` fails on a missing `SKILL.md`.
 ## `artifact/` — the third surface, same rule
 
 `artifact/` builds a published Claude Artifact that runs GP-01 with no deployment at all.
-The rule above is unchanged and applies to it identically: **no Google, BambooHR or Slack
-client in `artifact/`.** Its only way into any system is `zapier_call`, a passthrough that
-validates the tool name against the manifest and forwards the arguments object untouched —
+The rule above is unchanged and applies to it identically: **no Google, Slack or Sheets
+client in `artifact/`.** Its only way into any system is `call_system`, a passthrough that
+validates connector and tool against the manifest and forwards the arguments object untouched —
 so no Zapier argument shape is encoded there either. `build-artifact.mjs` inlines the skill
 the same way `embed-skill.mjs` does, and `artifact/dist/` is git-ignored.
 
@@ -90,13 +90,17 @@ says how, and the page's preflight panel shows which names resolved.
 - **Google:** create users via the raw Directory API — Zapier's `create_user` returns 403
   regardless of permissions. Profile fields need a second `PUT`. Suspend, never delete.
   Session revocation, mailbox delegation and Drive transfer need scopes nobody has.
-- **BambooHR:** job title, department, supervisor and employment status are effective-dated
-  **table rows**, not plain fields. A blank top-level `jobTitle` on a future-dated joiner is
-  correct, not a failure.
+- **There is no HR system.** BambooHR was removed on 2026-09-12 and nothing replaced it.
+  Job title, department and manager live on the Google Workspace account (set by the profile
+  `PUT`); what was granted and revoked lives in the Google Sheets provisioning register.
+  Those two are the whole record. Effy.ai was considered and rejected — it is a performance
+  review layer with no employee record, no public API and no MCP server.
 - **Slack:** a new person cannot be added by API (`not_allowed_token_type`), and domain
   sign-up is off on `new-digital-int`, so IT Operations invites by hand. Adding an existing
   member to a channel works; so does removing one, but only in channels the acting Slack
   identity has joined. Account deactivation is not reachable at all.
+  Slack stays on **Zapier**: the native Claude Slack connector has no tool to add or remove
+  a channel member, so both membership writes would be lost. Checked 2026-09-12.
 
 
 ## Deployment prerequisite — authentication

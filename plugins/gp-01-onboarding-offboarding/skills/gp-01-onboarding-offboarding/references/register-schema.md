@@ -17,7 +17,9 @@ listing worksheets, and may create a tab that splits the register in two.
 EmployeeID,Person,Role,System,Resource,AccessLevel,Action,Status,Basis,ApprovedBy,ExecutedAt,Evidence,ChangeRef
 ```
 
-- **EmployeeID / Person / Role** — who this row is about.
+- **EmployeeID / Person / Role** — who this row is about. `EmployeeID` is the **Google
+  Workspace user `id`** returned by the Directory API. There is no HR system, so there is
+  no other employee number to use; leave it blank only if the account creation failed.
 - **System / Resource / AccessLevel** — what, specifically (e.g. `Slack`, `#marketing`,
   `member`; or `Google Workspace`, `Delivery shared drive`, `editor`).
 - **Action** — `grant` or `revoke`.

@@ -442,19 +442,19 @@
     <header>
       <span class="eyebrow">Phase 01</span>
       <h2>What is happening to this person?</h2>
-      <p class="lede">Both paths execute for real against Google Workspace, BambooHR, Slack and the
+      <p class="lede">Both paths execute for real against Google Workspace, Gmail, Slack and the
         provisioning register. There is no preview mode.</p>
     </header>
     <div class="choices">
       <button class="choice" data-action="onboard" aria-pressed="true">
         <strong>Onboard a joiner</strong>
-        <span>Creates the HR record and the Google Workspace account, sends sign-in and welcome
-          email, posts the Slack welcome.</span>
+        <span>Creates the Google Workspace account, sends sign-in and welcome email, posts the
+          Slack welcome, writes the register rows.</span>
       </button>
       <button class="choice" data-action="offboard" aria-pressed="false">
         <strong>Offboard a leaver</strong>
-        <span>Suspends the Workspace account, marks Terminated in BambooHR, sends the farewell and
-          sweeps Slack channels.</span>
+        <span>Suspends the Workspace account, sends the farewell, sweeps Slack channels and closes
+          out the register.</span>
       </button>
     </div>
     <div class="actions">
@@ -513,8 +513,8 @@
         <label for="workEmail">Work email of the leaver</label>
         <input id="workEmail" type="email" inputmode="email" spellcheck="false"
                placeholder="firstname.lastname@new-digital-intelligence.com">
-        <span class="hint">The last working day and everything else comes from BambooHR — a value
-          typed here would only disagree with the HR record.</span>
+        <span class="hint">Everything else is resolved from Google Workspace and the register. The
+          last working day defaults to today unless the trigger names one.</span>
       </div>
     </div>
 
@@ -1361,8 +1361,7 @@
 
     const rows = v.action === "onboard"
       ? [
-          ["BambooHR", "Create the employee record, then write the jobInfo and employmentStatus rows for " + (v.role || "the role") + "."],
-          ["Google Workspace", "Create " + derivedEmail(v) + " with a generated password and forced reset, then set the profile."],
+          ["Google Workspace", "Create " + derivedEmail(v) + " with a generated password and forced reset, then set the profile — job title, department and manager live here, there is no HR system behind it."],
           ["Gmail", "Sign-in email to " + (v.personalEmail || "the personal address") + " — no copy to the manager."],
           ["Gmail", "Welcome email to " + derivedEmail(v) + ", copying " + (v.managerEmail || "the default manager") + "."],
           ["Slack", "One welcome message in #ai-employee-gp-01-onboarding-and-offboarding-assistant."],
@@ -1371,7 +1370,6 @@
       : [
           ["Guards", "Stop if " + (v.workEmail || "the address") + " is you, is an administrator, or resolves to nobody or to more than one person."],
           ["Google Workspace", "Suspend the account. Never delete — that is a human decision after the retention window."],
-          ["BambooHR", "Write a Terminated row to the employmentStatus table on the last working day."],
           ["Gmail", "Farewell email to their personal address, copying the manager."],
           ["Slack", "Post the farewell, then remove them from every channel the acting identity can reach."],
           ["Register", "One revoke row per item, with evidence."],
@@ -1422,7 +1420,7 @@
         " — " + (prior.verified || 0) + " verified, " + (prior.staged || 0) + " staged.";
       const p2 = document.createElement("p");
       p2.textContent = state.action === "onboard"
-        ? "Re-running is correct for pass 2, which adds them to Slack channels once they have signed up. It is not correct as a retry: a repeated BambooHR table write adds a duplicate row at the same date."
+        ? "Re-running is correct for pass 2, which adds them to Slack channels once they have signed up. It is not correct as a retry: a second run appends a duplicate set of register rows."
         : "Re-running a leaver is rarely correct. Check the log from the earlier run first.";
       notice.append(h, p, p2);
     }
