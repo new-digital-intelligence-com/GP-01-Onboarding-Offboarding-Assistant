@@ -58,6 +58,31 @@ git-ignored; never edit it.
 `../../plugins/...`. On Vercel, if Root Directory is `app`, *Include source files outside of
 the Root Directory* must be on, or `prebuild` fails on a missing `SKILL.md`.
 
+## `artifact/` — the third surface, same rule
+
+`artifact/` builds a published Claude Artifact that runs GP-01 with no deployment at all.
+The rule above is unchanged and applies to it identically: **no Google, BambooHR or Slack
+client in `artifact/`.** Its only way into any system is `zapier_call`, a passthrough that
+validates the tool name against the manifest and forwards the arguments object untouched —
+so no Zapier argument shape is encoded there either. `build-artifact.mjs` inlines the skill
+the same way `embed-skill.mjs` does, and `artifact/dist/` is git-ignored.
+
+Two things are genuinely different, and both follow from there being no server:
+
+- **The page holds no credentials.** It names a connector (`mcp-manifest.json` → `server`);
+  the viewer's own Zapier connector supplies the URL and token. So the "one shared Zapier
+  endpoint, nobody connects anything" property in `references/connector-map.md` survives
+  only if the workspace admin adds Zapier as an **organisation-level** connector. Check
+  that before treating the artifact as a replacement for `app/`.
+- **It replaces the Vercel Deployment Protection prerequisite**, because declaring `mcp`
+  makes the page organisation-internal and viewer-consented. It does not replace the
+  judgement behind it: anyone in the org who can open it and holds the connector can create
+  and suspend accounts.
+
+The tool allowlist in `mcp-manifest.json` is transcribed from `connector-map.md`, **not**
+verified against a live `listTools()`. Verify it before publishing — `artifact/README.md`
+says how, and the page's preflight panel shows which names resolved.
+
 ## Platform facts — verified, do not re-derive
 
 `references/connector-map.md` in the skill holds the full record. Short version:

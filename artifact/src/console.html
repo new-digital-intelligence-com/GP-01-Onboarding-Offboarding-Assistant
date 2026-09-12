@@ -1,0 +1,1504 @@
+<title>GP-01 Provisioning Console</title>
+
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+
+<style>
+  /* ---- tokens -------------------------------------------------------------
+     Neutrals are biased cyan, toward the accent, so nothing reads as default
+     grey. Semantic colours are deliberately NOT the accent: on this page
+     "verified" and "staged" are the whole point, and they must never be
+     confused with "this control is interactive".                            */
+  :root {
+    --ground: #eef3f4;
+    --surface: #ffffff;
+    --surface-2: #e4ecee;
+    --ink: #101a1d;
+    --ink-2: #40545a;
+    --ink-3: #6d858c;
+    --line: #d3dee1;
+    --line-2: #bccbcf;
+
+    --accent: #0f6c7d;
+    --accent-hover: #0b5866;
+    --accent-on: #ffffff;
+    --accent-soft: #dbedf0;
+
+    --ok: #2d6b48;   --ok-soft: #dcede3;
+    --warn: #8a5712; --warn-soft: #f5e8d6;
+    --bad: #9b2e2e;  --bad-soft: #f5dfdf;
+    --info: #3a5787; --info-soft: #e0e7f2;
+
+    --radius: 4px;
+    --shadow: 0 1px 2px rgba(16, 26, 29, .06), 0 4px 14px rgba(16, 26, 29, .05);
+
+    --sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0c1215;
+      --surface: #141d21;
+      --surface-2: #1b262b;
+      --ink: #e2ebed;
+      --ink-2: #a0b4ba;
+      --ink-3: #768d94;
+      --line: #223035;
+      --line-2: #31444a;
+
+      --accent: #4fb3c4;
+      --accent-hover: #6cc4d3;
+      --accent-on: #06181d;
+      --accent-soft: #12313a;
+
+      --ok: #6cc191;   --ok-soft: #12281e;
+      --warn: #d4a35a; --warn-soft: #2a2013;
+      --bad: #e08686;  --bad-soft: #2b1616;
+      --info: #90acda; --info-soft: #141e2d;
+
+      --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 4px 14px rgba(0, 0, 0, .3);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #0c1215;
+    --surface: #141d21;
+    --surface-2: #1b262b;
+    --ink: #e2ebed;
+    --ink-2: #a0b4ba;
+    --ink-3: #768d94;
+    --line: #223035;
+    --line-2: #31444a;
+
+    --accent: #4fb3c4;
+    --accent-hover: #6cc4d3;
+    --accent-on: #06181d;
+    --accent-soft: #12313a;
+
+    --ok: #6cc191;   --ok-soft: #12281e;
+    --warn: #d4a35a; --warn-soft: #2a2013;
+    --bad: #e08686;  --bad-soft: #2b1616;
+    --info: #90acda; --info-soft: #141e2d;
+
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 4px 14px rgba(0, 0, 0, .3);
+  }
+
+  /* ---- base --------------------------------------------------------------- */
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font: 400 15px/1.55 var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3 { margin: 0; text-wrap: balance; font-weight: 600; letter-spacing: -.01em; }
+  p { margin: 0; }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  }
+
+  .shell { max-width: 1020px; margin: 0 auto; padding: 0 24px 96px; }
+
+  .eyebrow {
+    font: 600 11px/1 var(--mono);
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  /* ---- masthead ----------------------------------------------------------- */
+  .masthead {
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+    margin-bottom: 28px;
+  }
+  .masthead-in {
+    max-width: 1020px;
+    margin: 0 auto;
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .mark {
+    font: 600 13px/1 var(--mono);
+    letter-spacing: .08em;
+    color: var(--accent-on);
+    background: var(--accent);
+    padding: 7px 9px;
+    border-radius: var(--radius);
+  }
+  .masthead h1 { font-size: 17px; }
+  .masthead .sub { color: var(--ink-3); font-size: 13px; }
+  .masthead .spacer { flex: 1; }
+
+  /* ---- preflight ---------------------------------------------------------- */
+  .preflight {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+  .preflight-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 16px;
+    border-left: 3px solid var(--line-2);
+  }
+  .preflight[data-state="ready"]   .preflight-head { border-left-color: var(--ok); }
+  .preflight[data-state="blocked"] .preflight-head { border-left-color: var(--bad); }
+  .preflight[data-state="warn"]    .preflight-head { border-left-color: var(--warn); }
+  .preflight-head h2 { font-size: 14px; flex: 1; }
+  .preflight-body {
+    border-top: 1px solid var(--line);
+    padding: 4px 16px 14px;
+  }
+  .checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; background: var(--line); border-radius: var(--radius); overflow: hidden; }
+  .checks li {
+    background: var(--surface);
+    display: grid;
+    grid-template-columns: 18px 190px 1fr;
+    gap: 12px;
+    align-items: baseline;
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+  .checks .what { color: var(--ink-2); font-weight: 500; }
+  .checks .detail { color: var(--ink-3); font-family: var(--mono); font-size: 12px; word-break: break-word; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line-2); align-self: center; }
+  .dot.ok  { background: var(--ok); }
+  .dot.bad { background: var(--bad); }
+  .dot.warn{ background: var(--warn); }
+
+  .toolgrid { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+  .toolchip {
+    font: 400 11px/1 var(--mono);
+    padding: 5px 7px;
+    border-radius: 3px;
+    background: var(--surface-2);
+    color: var(--ink-2);
+    border: 1px solid transparent;
+  }
+  .toolchip.ok  { background: var(--ok-soft);  color: var(--ok); }
+  .toolchip.bad { background: var(--bad-soft); color: var(--bad); text-decoration: line-through; }
+  .toolhead {
+    width: 100%;
+    margin-top: 9px;
+    font: 600 10px/1 var(--mono);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .toolhead:first-child { margin-top: 2px; }
+  .checks .what .sub {
+    display: block;
+    margin-top: 2px;
+    font: 400 11px/1.4 var(--mono);
+    color: var(--ink-3);
+  }
+
+  /* ---- phase spine -------------------------------------------------------- */
+  .spine { display: flex; gap: 2px; margin-bottom: 22px; }
+  .phase {
+    flex: 1;
+    padding: 9px 12px;
+    border-top: 2px solid var(--line-2);
+    color: var(--ink-3);
+    font: 500 12px/1.3 var(--sans);
+    background: none;
+    border-left: 0; border-right: 0; border-bottom: 0;
+    text-align: left;
+  }
+  .phase .n { font-family: var(--mono); font-size: 11px; display: block; color: var(--ink-3); }
+  .phase[aria-current="step"] { border-top-color: var(--accent); color: var(--ink); font-weight: 600; }
+  .phase[data-done="1"] { border-top-color: var(--ok); color: var(--ink-2); }
+
+  /* ---- panels ------------------------------------------------------------- */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 24px;
+  }
+  .panel > header { margin-bottom: 20px; display: grid; gap: 6px; }
+  .panel h2 { font-size: 19px; }
+  .panel .lede { color: var(--ink-2); font-size: 14px; max-width: 62ch; }
+
+  /* ---- action choice ------------------------------------------------------ */
+  .choices { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .choice {
+    display: grid;
+    gap: 6px;
+    text-align: left;
+    padding: 16px;
+    border: 1px solid var(--line-2);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+    font: inherit;
+  }
+  .choice:hover { border-color: var(--accent); }
+  .choice[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+  .choice strong { font-size: 15px; }
+  .choice span { color: var(--ink-2); font-size: 13px; }
+
+  /* ---- forms -------------------------------------------------------------- */
+  .fields { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+  .field { display: grid; gap: 5px; }
+  .field.wide { grid-column: 1 / -1; }
+  .field label { font: 500 12px/1 var(--sans); color: var(--ink-2); letter-spacing: .01em; }
+  .field input, .field select {
+    font: 400 14px/1.4 var(--sans);
+    padding: 9px 10px;
+    border: 1px solid var(--line-2);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--ink);
+    width: 100%;
+  }
+  .field input[type="email"], .field input[inputmode="email"] { font-family: var(--mono); font-size: 13px; }
+  .field .hint { font-size: 12px; color: var(--ink-3); }
+  .field .hint.bad { color: var(--bad); }
+
+  /* ---- review ------------------------------------------------------------- */
+  .willdo { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; background: var(--line); border-radius: var(--radius); overflow: hidden; }
+  .willdo li { background: var(--surface); padding: 11px 14px; display: grid; grid-template-columns: 150px 1fr; gap: 14px; font-size: 13.5px; }
+  .willdo .sys { font: 500 12px/1.5 var(--mono); color: var(--ink-3); }
+  .willdo .act { color: var(--ink); }
+  .willdo .act em { font-style: normal; color: var(--ink-2); }
+
+  .notice {
+    border-left: 3px solid var(--warn);
+    background: var(--warn-soft);
+    color: var(--ink);
+    padding: 13px 15px;
+    border-radius: var(--radius);
+    font-size: 13.5px;
+  }
+  .notice.bad { border-left-color: var(--bad); background: var(--bad-soft); }
+  .notice strong { display: block; margin-bottom: 3px; }
+  .notice p + p { margin-top: 6px; }
+
+  /* ---- buttons ------------------------------------------------------------ */
+  .actions { display: flex; gap: 10px; align-items: center; margin-top: 24px; flex-wrap: wrap; }
+  .actions .spacer { flex: 1; }
+  button.btn {
+    font: 500 14px/1 var(--sans);
+    padding: 11px 17px;
+    border-radius: var(--radius);
+    border: 1px solid var(--line-2);
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+  }
+  button.btn:hover:not(:disabled) { border-color: var(--ink-3); }
+  button.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
+  button.btn.primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+  button.btn.danger { background: var(--bad); border-color: var(--bad); color: #fff; }
+  button.btn:disabled { opacity: .45; cursor: not-allowed; }
+
+  /* ---- run log ------------------------------------------------------------ */
+  .runmeta {
+    display: flex; gap: 20px; flex-wrap: wrap;
+    padding: 12px 14px; margin-bottom: 16px;
+    background: var(--surface-2); border-radius: var(--radius);
+    font-size: 13px;
+  }
+  .runmeta div { display: grid; gap: 2px; }
+  .runmeta .k { font: 600 10px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+  .runmeta .v { font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; }
+
+  .log { display: grid; gap: 1px; background: var(--line); border-radius: var(--radius); overflow: hidden; }
+  .log:empty { display: none; }
+  .row {
+    background: var(--surface);
+    display: grid;
+    grid-template-columns: 74px 1fr;
+    gap: 12px;
+    padding: 9px 12px 9px 13px;
+    border-left: 3px solid transparent;
+    font-size: 13.5px;
+    align-items: baseline;
+  }
+  .row .tag { font: 600 10.5px/1.6 var(--mono); letter-spacing: .09em; }
+  .row .txt { min-width: 0; overflow-wrap: anywhere; }
+  .row .txt a { color: var(--accent); }
+  .row .when { font: 400 11px/1.6 var(--mono); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .row[data-tag="STEP"]   { border-left-color: var(--line-2); }
+  .row[data-tag="STEP"]   .tag { color: var(--ink-3); }
+  .row[data-tag="DONE"]   { border-left-color: var(--ok); }
+  .row[data-tag="DONE"]   .tag { color: var(--ok); }
+  .row[data-tag="FAIL"]   { border-left-color: var(--bad); background: var(--bad-soft); }
+  .row[data-tag="FAIL"]   .tag { color: var(--bad); }
+  .row[data-tag="STAGED"] { border-left-color: var(--warn); }
+  .row[data-tag="STAGED"] .tag { color: var(--warn); }
+  .row[data-tag="ASSUME"] { border-left-color: var(--info); }
+  .row[data-tag="ASSUME"] .tag { color: var(--info); }
+  .row[data-tag="CALL"]   .tag { color: var(--ink-3); }
+  .row[data-tag="CALL"]   .txt { font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
+
+  .working {
+    display: flex; align-items: center; gap: 9px;
+    padding: 11px 13px; color: var(--ink-2); font-size: 13px;
+  }
+  .pulse {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+
+  details.narration { margin-top: 18px; }
+  details.narration > summary {
+    cursor: pointer; font: 500 12.5px/1 var(--sans); color: var(--ink-2);
+    padding: 9px 0;
+  }
+  details.narration pre {
+    margin: 0;
+    font: 400 12px/1.6 var(--mono);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    color: var(--ink-2);
+    background: var(--surface-2);
+    padding: 13px;
+    border-radius: var(--radius);
+    max-height: 340px;
+    overflow-y: auto;
+  }
+
+  /* ---- summary ------------------------------------------------------------ */
+  .tally { display: flex; gap: 1px; background: var(--line); border-radius: var(--radius); overflow: hidden; margin-bottom: 16px; }
+  .tally div { flex: 1; background: var(--surface); padding: 14px 16px; display: grid; gap: 3px; }
+  .tally .n { font: 600 26px/1 var(--mono); font-variant-numeric: tabular-nums; }
+  .tally .l { font: 500 11px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+  .tally .verified .n { color: var(--ok); }
+  .tally .staged .n   { color: var(--warn); }
+  .tally .failed .n   { color: var(--bad); }
+
+  .hidden { display: none !important; }
+
+  @media (max-width: 620px) {
+    .checks li { grid-template-columns: 18px 1fr; }
+    .checks .detail { grid-column: 2; }
+    .willdo li { grid-template-columns: 1fr; gap: 3px; }
+    .row { grid-template-columns: 62px 1fr; }
+    .spine .phase .label { display: none; }
+  }
+</style>
+
+<header class="masthead">
+  <div class="masthead-in">
+    <span class="mark">GP-01</span>
+    <div>
+      <h1>Onboarding &amp; Offboarding Assistant</h1>
+      <div class="sub">New Digital Intelligence — People Ops provisioning</div>
+    </div>
+    <div class="spacer"></div>
+    <div class="eyebrow" id="buildStamp"></div>
+  </div>
+</header>
+
+<div class="shell">
+
+  <!-- Preflight. First thing on the page because the connector is the thing that
+       breaks: this page holds no credentials of its own. -->
+  <section class="preflight" id="preflight" data-state="checking">
+    <div class="preflight-head">
+      <span class="dot" id="preflightDot"></span>
+      <h2 id="preflightTitle">Checking connectors…</h2>
+      <button class="btn" id="recheckBtn" style="padding:6px 11px;font-size:12.5px;">Re-check</button>
+    </div>
+    <div class="preflight-body">
+      <ul class="checks" id="checks"></ul>
+      <div class="toolgrid" id="toolgrid"></div>
+    </div>
+  </section>
+
+  <nav class="spine" id="spine" aria-label="Run phases">
+    <button class="phase" data-step="0" aria-current="step"><span class="n">01</span><span class="label">Action</span></button>
+    <button class="phase" data-step="1"><span class="n">02</span><span class="label">Details</span></button>
+    <button class="phase" data-step="2"><span class="n">03</span><span class="label">Review</span></button>
+    <button class="phase" data-step="3"><span class="n">04</span><span class="label">Run</span></button>
+  </nav>
+
+  <!-- ---------- step 0 : action ---------- -->
+  <section class="panel" id="step0">
+    <header>
+      <span class="eyebrow">Phase 01</span>
+      <h2>What is happening to this person?</h2>
+      <p class="lede">Both paths execute for real against Google Workspace, BambooHR, Slack and the
+        provisioning register. There is no preview mode.</p>
+    </header>
+    <div class="choices">
+      <button class="choice" data-action="onboard" aria-pressed="true">
+        <strong>Onboard a joiner</strong>
+        <span>Creates the HR record and the Google Workspace account, sends sign-in and welcome
+          email, posts the Slack welcome.</span>
+      </button>
+      <button class="choice" data-action="offboard" aria-pressed="false">
+        <strong>Offboard a leaver</strong>
+        <span>Suspends the Workspace account, marks Terminated in BambooHR, sends the farewell and
+          sweeps Slack channels.</span>
+      </button>
+    </div>
+    <div class="actions">
+      <div class="spacer"></div>
+      <button class="btn primary" data-goto="1">Continue</button>
+    </div>
+  </section>
+
+  <!-- ---------- step 1 : details ---------- -->
+  <section class="panel hidden" id="step1">
+    <header>
+      <span class="eyebrow">Phase 02</span>
+      <h2 id="detailsTitle">Joiner details</h2>
+      <p class="lede" id="detailsLede">Everything not given here is resolved from the live systems or
+        defaulted, and every default is reported back under Assumptions.</p>
+    </header>
+
+    <div id="joinerFields" class="fields">
+      <div class="field">
+        <label for="firstName">First name</label>
+        <input id="firstName" type="text" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="field">
+        <label for="lastName">Last name</label>
+        <input id="lastName" type="text" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="field">
+        <label for="role">Role</label>
+        <select id="role">
+          <option>AI Engineer</option>
+          <option>Solution Architect</option>
+          <option>Marketing Analyst</option>
+          <option>Delivery Lead</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="startDate">Start date</label>
+        <input id="startDate" type="date">
+      </div>
+      <div class="field wide">
+        <label for="managerEmail">Manager</label>
+        <input id="managerEmail" type="email" inputmode="email" spellcheck="false"
+               value="helmi.lakhder@new-digital-intelligence.com">
+        <span class="hint">Verified in the directory before it is used. If it does not resolve, the
+          run falls back to the default and says so.</span>
+      </div>
+      <div class="field wide">
+        <label for="personalEmail">Personal email</label>
+        <input id="personalEmail" type="email" inputmode="email" spellcheck="false">
+        <span class="hint">Where the temporary password goes. The manager is never copied on it.</span>
+      </div>
+    </div>
+
+    <div id="leaverFields" class="fields hidden">
+      <div class="field wide">
+        <label for="workEmail">Work email of the leaver</label>
+        <input id="workEmail" type="email" inputmode="email" spellcheck="false"
+               placeholder="firstname.lastname@new-digital-intelligence.com">
+        <span class="hint">The last working day and everything else comes from BambooHR — a value
+          typed here would only disagree with the HR record.</span>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn" data-goto="0">Back</button>
+      <div class="spacer"></div>
+      <span class="hint bad hidden" id="detailsError"></span>
+      <button class="btn primary" id="toReview">Review</button>
+    </div>
+  </section>
+
+  <!-- ---------- step 2 : review ---------- -->
+  <section class="panel hidden" id="step2">
+    <header>
+      <span class="eyebrow">Phase 03</span>
+      <h2>This is the only checkpoint</h2>
+      <p class="lede">Nothing below is simulated. Once you start the run, each step executes against
+        the live tenant as it is reached.</p>
+    </header>
+
+    <ul class="willdo" id="willdo"></ul>
+
+    <div class="notice" id="rerunNotice" style="margin-top:16px;" hidden></div>
+
+    <div class="actions">
+      <button class="btn" data-goto="1">Back</button>
+      <div class="spacer"></div>
+      <button class="btn primary" id="runBtn">Start the run</button>
+    </div>
+  </section>
+
+  <!-- ---------- step 3 : run ---------- -->
+  <section class="panel hidden" id="step3">
+    <header>
+      <span class="eyebrow">Phase 04</span>
+      <h2 id="runTitle">Run in progress</h2>
+    </header>
+
+    <div class="runmeta">
+      <div><span class="k">Subject</span><span class="v" id="metaSubject">—</span></div>
+      <div><span class="k">Change ref</span><span class="v" id="metaRef">pending</span></div>
+      <div><span class="k">Zapier calls</span><span class="v" id="metaCalls">0</span></div>
+      <div><span class="k">Elapsed</span><span class="v" id="metaElapsed">0:00</span></div>
+    </div>
+
+    <div class="tally hidden" id="tally">
+      <div class="verified"><span class="n" id="tallyVerified">0</span><span class="l">Verified</span></div>
+      <div class="staged"><span class="n" id="tallyStaged">0</span><span class="l">Staged</span></div>
+      <div class="failed"><span class="n" id="tallyFailed">0</span><span class="l">Failed</span></div>
+    </div>
+
+    <div class="log" id="log"></div>
+
+    <div class="working" id="working"><span class="pulse"></span><span id="workingText">Sending the run to Claude…</span></div>
+
+    <div class="notice bad hidden" id="runError"></div>
+
+    <details class="narration">
+      <summary>Claude's narration</summary>
+      <pre id="narration">—</pre>
+    </details>
+
+    <div class="actions">
+      <button class="btn danger hidden" id="stopBtn">Stop the run</button>
+      <button class="btn hidden" id="reportBtn">Download report</button>
+      <button class="btn hidden" id="registerBtn">Download register rows</button>
+      <div class="spacer"></div>
+      <button class="btn hidden" id="restartBtn">Start another run</button>
+    </div>
+  </section>
+</div>
+
+<script>
+  "use strict";
+
+  /* Injected by build-artifact.mjs. The skill in plugins/ is the only implementation;
+     this page carries a build-time copy of it and never re-states a provisioning step. */
+  const SKILL_FILES = "__SKILL_FILES__";
+  const MCP = "__MCP_MANIFEST__";
+  const BUILD = "__BUILD_STAMP__";
+
+  const REFERENCE_ORDER = [
+    "references/connector-map.md",
+    "references/approval-gates.md",
+    "references/register-schema.md",
+    "assets/welcome-email-template.md",
+    "assets/completion-report-template.md",
+  ];
+
+  const SAMPLE_MAX_PROMPT_BYTES = 65536;
+  const TOOL_RESULT_MAX = 32000;
+
+  const $ = (id) => document.getElementById(id);
+  const bytes = (s) => new TextEncoder().encode(s).length;
+
+  /* ------------------------------------------------------------------ state */
+  const state = {
+    step: 0,
+    action: "onboard",
+    caps: { mcp: null, sample: null, db: null, downloads: null },
+    preflight: null,
+    running: false,
+    abort: null,
+    calls: 0,
+    startedAt: 0,
+    ticker: 0,
+    counts: { DONE: 0, STAGED: 0, FAIL: 0 },
+    finished: null,
+    guardKey: "",
+    overrode: false,
+  };
+
+  /* ------------------------------------------------------- capability boot */
+  async function boot() {
+    $("buildStamp").textContent = "build " + BUILD;
+
+    const [mcp, sample, db, downloads] = await Promise.all([
+      claude.use("mcp").catch(() => null),
+      claude.use("sample").catch(() => null),
+      claude.use("db").catch(() => null),
+      claude.use("downloads").catch(() => null),
+    ]);
+    state.caps = { mcp, sample, db, downloads };
+    await preflight();
+  }
+
+  /**
+   * listTools() returns the page's published manifest intersected with what this
+   * viewer has actually connected — so it answers the only question that matters
+   * before a run: which systems will a call actually reach, and which of the tool
+   * names we declared are really there.
+   *
+   * Systems the build left out of the manifest (mcp-manifest.json `enabled: false`,
+   * or no tool names yet) are NOT failures: they are reported as staged, with their
+   * steps owed to a named human, exactly as approval-gates.md defines the word.
+   */
+  async function preflight() {
+    const { mcp, sample, db } = state.caps;
+    const checks = [];
+
+    checks.push({
+      ok: !!mcp,
+      what: "Connector bridge",
+      detail: mcp ? "available" : "claude.use(\"mcp\") returned null — this view cannot call connectors",
+    });
+    checks.push({
+      ok: !!sample,
+      what: "Claude (sample)",
+      detail: sample ? "available" : "claude.use(\"sample\") returned null — the run cannot be driven",
+    });
+
+    let listing = null;
+    let listError = null;
+    if (mcp) {
+      try { listing = await mcp.listTools(); }
+      catch (e) { listError = e; }
+    }
+
+    const servers = [];
+    for (const decl of MCP.servers) {
+      const live = listing ? (listing.servers || []).find((s) => s.server === decl.server) : null;
+      const authStatus = live ? live.authStatus : null;
+      const upstream = live ? (live.tools || []).map((t) => t.name) : [];
+      const resolved = decl.tools.filter((t) => upstream.includes(t));
+      const missing = decl.tools.filter((t) => !upstream.includes(t));
+
+      let ok, detail;
+      if (listError) {
+        ok = false; detail = listError.code + " — " + listError.message;
+      } else if (!live) {
+        ok = false;
+        detail = "not connected for this viewer — add “" + decl.server + "” in claude.ai Settings → Connectors";
+      } else if (authStatus === "needs_reauth") {
+        ok = false;
+        detail = "needs_reauth — reconnect “" + decl.server + "” in claude.ai Settings → Connectors";
+      } else if (!upstream.length) {
+        ok = "warn";
+        detail = authStatus === "unknown"
+          ? "listed from the manifest — consent is asked on the first call"
+          : "listed with no callable tools (a duplicate connector may be awaiting your choice)";
+      } else if (missing.length) {
+        ok = resolved.length ? "warn" : false;
+        detail = resolved.length + " of " + decl.tools.length + " tools reachable — " + missing.length + " missing";
+      } else {
+        ok = true;
+        detail = authStatus + " — all " + decl.tools.length + " tools reachable";
+      }
+
+      servers.push({ decl: decl, live: live, authStatus: authStatus, upstream: upstream, resolved: resolved, missing: missing, ok: ok });
+      checks.push({ ok: ok, what: decl.server, detail: detail, sub: (decl.systems || []).join(" · ") });
+    }
+
+    for (const s of MCP.staged || []) {
+      checks.push({
+        ok: "warn",
+        what: s.server,
+        detail: "not configured (" + s.reason + ") — these steps will be staged, not run",
+        sub: (s.systems || []).join(" · "),
+      });
+    }
+
+    checks.push({
+      ok: db ? true : "warn",
+      what: "Run history",
+      detail: db ? "available — repeat runs are flagged at Review" : "unavailable — repeat runs cannot be detected",
+    });
+
+    if (sample) {
+      try {
+        const lim = await sample.limits();
+        const need = bytes(buildPrompt(sampleValues()));
+        checks.push({
+          ok: need <= lim.maxPromptBytes,
+          what: "Prompt budget",
+          detail: need.toLocaleString() + " of " + lim.maxPromptBytes.toLocaleString() + " bytes",
+        });
+        if (lim.tools && lim.tools.maxCount < 5) {
+          checks.push({ ok: false, what: "Tool budget", detail: "this view allows only " + lim.tools.maxCount + " tools; the run needs 5" });
+        }
+      } catch {
+        checks.push({ ok: "warn", what: "Prompt budget", detail: "limits() unavailable — checked at run time instead" });
+      }
+    }
+
+    const reachable = servers.filter((s) => s.ok !== false);
+    state.preflight = {
+      servers: servers,
+      ready: !!(mcp && sample && servers.length && reachable.length === servers.length),
+    };
+
+    renderPreflight(checks, servers);
+    renderSpine();
+    updateRunButton();
+  }
+
+  function renderPreflight(checks, servers) {
+    const ul = $("checks");
+    ul.textContent = "";
+    for (const c of checks) {
+      const li = document.createElement("li");
+      const dot = document.createElement("span");
+      dot.className = "dot " + (c.ok === true ? "ok" : c.ok === "warn" ? "warn" : "bad");
+      const what = document.createElement("span");
+      what.className = "what";
+      what.textContent = c.what;
+      if (c.sub) {
+        const sub = document.createElement("span");
+        sub.className = "sub";
+        sub.textContent = c.sub;
+        what.append(sub);
+      }
+      const detail = document.createElement("span");
+      detail.className = "detail";
+      detail.textContent = c.detail;
+      li.append(dot, what, detail);
+      ul.append(li);
+    }
+
+    const grid = $("toolgrid");
+    grid.textContent = "";
+    for (const s of servers) {
+      if (!s.upstream.length && !s.missing.length) continue;
+      const head = document.createElement("span");
+      head.className = "toolhead";
+      head.textContent = s.decl.server;
+      grid.append(head);
+      for (const t of s.resolved) {
+        const el = document.createElement("span");
+        el.className = "toolchip ok";
+        el.textContent = t;
+        grid.append(el);
+      }
+      for (const t of s.missing) {
+        const el = document.createElement("span");
+        el.className = "toolchip bad";
+        el.title = "Declared in the manifest but not exposed by the “" + s.decl.server + "” connector";
+        el.textContent = t;
+        grid.append(el);
+      }
+    }
+
+    const p = $("preflight");
+    const bad = checks.some((c) => c.ok === false);
+    const warn = checks.some((c) => c.ok === "warn");
+    p.dataset.state = bad ? "blocked" : warn ? "warn" : "ready";
+    $("preflightDot").className = "dot " + (bad ? "bad" : warn ? "warn" : "ok");
+    $("preflightTitle").textContent = bad
+      ? "This page cannot run yet"
+      : warn
+        ? "Ready — some systems will be staged"
+        : "Ready to run";
+  }
+
+  /* ------------------------------------------------------------ form values */
+  function values() {
+    return {
+      action: state.action,
+      firstName: $("firstName").value.trim(),
+      lastName: $("lastName").value.trim(),
+      role: $("role").value,
+      startDate: $("startDate").value,
+      managerEmail: $("managerEmail").value.trim(),
+      personalEmail: $("personalEmail").value.trim(),
+      workEmail: $("workEmail").value.trim(),
+    };
+  }
+
+  /** Stand-in values, used only to size the prompt during preflight. */
+  function sampleValues() {
+    return {
+      action: "onboard",
+      firstName: "Firstname",
+      lastName: "Lastname",
+      role: "AI Engineer",
+      startDate: "2026-01-01",
+      managerEmail: "manager@new-digital-intelligence.com",
+      personalEmail: "personal@example.com",
+      workEmail: "",
+    };
+  }
+
+  function validate(v) {
+    if (v.action === "offboard") {
+      if (!v.workEmail) return "The leaver's work email is required.";
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.workEmail)) return "That does not look like an email address.";
+      return null;
+    }
+    if (!v.firstName || !v.lastName) return "First and last name are both required.";
+    if (!v.personalEmail) return "A personal email is required — it is where the password goes.";
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.personalEmail)) return "That personal email does not look valid.";
+    if (v.managerEmail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.managerEmail)) return "That manager email does not look valid.";
+    return null;
+  }
+
+  /* --------------------------------------------------------- prompt framing
+     The app owns prompt framing and nothing else about the run: parameterised
+     mode, the reporting protocol, and how to reach the connectors from here. */
+  function buildPrompt(v) {
+    const body = (SKILL_FILES["SKILL.md"] || "").replace(/^---[\s\S]*?---\n/, "");
+    const refs = REFERENCE_ORDER
+      .map((rel) => (SKILL_FILES[rel] ? "\n\n<file path=\"" + rel + "\">\n" + SKILL_FILES[rel] + "\n</file>" : ""))
+      .join("");
+
+    const trigger = v.action === "onboard"
+      ? [
+          "Onboard a new joiner.",
+          "Name: " + v.firstName + " " + v.lastName,
+          "Role: " + v.role,
+          v.managerEmail ? "Manager: " + v.managerEmail : "",
+          v.startDate ? "Start date: " + v.startDate : "",
+          v.personalEmail ? "Personal email: " + v.personalEmail : "",
+        ].filter(Boolean).join("\n")
+      : "Offboard " + v.workEmail;
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    return [
+      "You are running NDI's GP-01 Onboarding and Offboarding Assistant from a published Claude",
+      "Artifact — a web page opened by a member of People Ops, not a chat window.",
+      "",
+      body,
+      refs,
+      "",
+      "## Running from the artifact console",
+      "",
+      "You are in parameterised mode: the form below has already supplied the details. Execute",
+      "without asking anything. There is nobody to answer — a clarifying question stalls the run",
+      "and the page has no way to send you a reply.",
+      "",
+      "**Skip the settings document entirely.** The skill tells you to find or create a GP-01",
+      "settings document in Drive. That is for chat. This console supplies every setting from its",
+      "form and the Environment constants, so searching Drive wastes a step and creating a document",
+      "writes a file nobody asked for. Go straight to the first real provisioning step.",
+      "",
+      "**Today is " + today + ".** Use it for hire-date arithmetic, ExecutedAt timestamps and the",
+      "ChangeRef. Do not guess the date from anything else.",
+      "",
+      "### Reaching the systems",
+      "",
+      "You have no connectors of your own here. Every call into every system goes through the",
+      "`call_system` tool, which forwards to one of the viewer's connectors using their credentials.",
+      "Different systems sit behind different connectors, and which is which is not for you to",
+      "assume:",
+      "",
+      "1. Call `list_systems` once, first. It tells you every connector this page can reach, which",
+      "   business systems each one carries, and its exact tool names. Use those names verbatim —",
+      "   a connector or tool outside that list is refused before it is sent, and guessing costs a",
+      "   round.",
+      "2. `call_system` takes `{connector, tool, input}`, where `input` is that tool's own arguments",
+      "   object. It returns the tool's payload, or throws `Error: <code> — <message>`.",
+      "3. `list_systems` also returns `not_configured`. Those systems have no connector in this",
+      "   page at all. **Do not attempt their steps and do not report them as failed.** Stage each",
+      "   one with a named owner and the reason, exactly as `references/approval-gates.md` defines",
+      "   staged. Owner is IT Operations unless the skill names someone else.",
+      "4. A throw is information, not the end of the run. Record it and carry on exactly as the",
+      "   skill says: a failed step never aborts the run.",
+      "5. `server_unavailable` and `upstream_error` on a WRITE are an UNKNOWN outcome, not a",
+      "   failure — the call may well have run. Read the resource back before deciding, and never",
+      "   blind-retry a create: a repeated write can leave a duplicate record behind.",
+      "",
+      "### Reporting",
+      "",
+      "The page renders the run from your `log_event` calls, not from your prose. Call it as each",
+      "step happens, not in a batch at the end:",
+      "",
+      "  log_event {tag:\"STEP\",   text:\"what you are doing now\"}",
+      "  log_event {tag:\"DONE\",   text:\"what completed\", href:\"optional url to the artefact\"}",
+      "  log_event {tag:\"FAIL\",   text:\"what failed and why\"}",
+      "  log_event {tag:\"STAGED\", text:\"<system> :: <resource> :: <owner> :: <reason>\"}",
+      "  log_event {tag:\"ASSUME\", text:\"an assumption you made\"}",
+      "",
+      "Only mark `DONE` for something you read back. Everything else is `FAIL` or `STAGED`, and",
+      "they are different things: failed means the system errored and a retry may fix it; staged",
+      "means a named human owes the work.",
+      "",
+      "**Use `new_password` for the Google Workspace password.** Never invent one yourself.",
+      "",
+      "**Finish with `finish_run`**, always — including when steps failed. It carries the counts,",
+      "the ChangeRef, the completion report and the register rows.",
+      "",
+      "**Be terse.** Every token spent narrating is one not available for the rest of the run, and",
+      "a run that stops early leaves a half-provisioned person.",
+      "",
+      "### The run",
+      "",
+      trigger,
+    ].join("\n");
+  }
+
+  /* ------------------------------------------------------------- page tools */
+  function clip(value) {
+    let s;
+    try { s = typeof value === "string" ? value : JSON.stringify(value); }
+    catch { s = String(value); }
+    if (s == null) s = "";
+    return s.length > TOOL_RESULT_MAX
+      ? s.slice(0, TOOL_RESULT_MAX) + "\n…[truncated at " + TOOL_RESULT_MAX + " characters]"
+      : s;
+  }
+
+  function runTools() {
+    return [
+      {
+        name: "list_systems",
+        description:
+          "List every connector this page can reach, which business systems each one carries, and " +
+          "its exact tool names. Also lists systems that are NOT configured, whose steps must be " +
+          "staged rather than run. Call this once, first, and use the returned names verbatim.",
+        async execute() {
+          const mcp = state.caps.mcp;
+          if (!mcp) throw new Error("the connector bridge is not available in this view");
+          const listing = await mcp.listTools();
+          const live = listing.servers || [];
+
+          const connectors = MCP.servers.map((decl) => {
+            const found = live.find((s) => s.server === decl.server);
+            const upstream = found ? (found.tools || []) : [];
+            const allowed = upstream.filter((t) => decl.tools.includes(t.name));
+            return {
+              connector: decl.server,
+              carries: decl.systems,
+              authStatus: found ? found.authStatus : "not_connected",
+              tools: (allowed.length ? allowed : decl.tools.map((name) => ({ name: name, description: "" })))
+                .map((t) => ({ name: t.name, description: t.description || "" })),
+            };
+          });
+
+          return clip({
+            connectors: connectors,
+            not_configured: (MCP.staged || []).map((s) => ({
+              system: (s.systems || []).join(", ") || s.server,
+              reason: s.reason,
+              instruction: "Do not attempt these steps. Stage each one with a named owner and the reason.",
+            })),
+          });
+        },
+      },
+      {
+        name: "call_system",
+        description:
+          "Call one tool on one connector and return its payload. `connector` and `tool` must both " +
+          "come from list_systems; `input` is that tool's own arguments object. Throws " +
+          "\"Error: <code> — <message>\" when the call fails; server_unavailable and upstream_error " +
+          "on a write mean the outcome is UNKNOWN, not that it did not run.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            connector: { type: "string", description: "Connector name exactly as list_systems returned it." },
+            tool: { type: "string", description: "Exact tool name from list_systems." },
+            input: { type: "object", description: "Arguments object for that tool." },
+          },
+          required: ["connector", "tool"],
+        },
+        async execute(input, ctx) {
+          const mcp = state.caps.mcp;
+          if (!mcp) throw new Error("the connector bridge is not available in this view");
+
+          const name = String(input && input.connector || "").trim();
+          const tool = String(input && input.tool || "").trim();
+          if (!name) throw new Error("`connector` is required — call list_systems first");
+          if (!tool) throw new Error("`tool` is required");
+
+          const decl = MCP.servers.find((s) => s.server === name);
+          if (!decl) {
+            const staged = (MCP.staged || []).find((s) => s.server === name);
+            if (staged) {
+              throw new Error(
+                "\"" + name + "\" is not configured in this page (" + staged.reason + "). " +
+                "Do not retry: stage this step with a named owner instead.",
+              );
+            }
+            throw new Error(
+              "\"" + name + "\" is not a connector this page can reach. " +
+              "Call list_systems and use a name from it.",
+            );
+          }
+          if (!decl.tools.includes(tool)) {
+            throw new Error(
+              "\"" + tool + "\" is not in this page's manifest for " + name + ", so it cannot be " +
+              "called. Call list_systems and use a name from it.",
+            );
+          }
+
+          state.calls += 1;
+          $("metaCalls").textContent = String(state.calls);
+          logRow("CALL", name + " · " + tool);
+          try {
+            const res = await mcp.callTool(name, tool, (input && input.input) || {}, { signal: ctx.signal });
+            return clip(res.payload !== undefined ? res.payload : res.content);
+          } catch (e) {
+            const code = e && e.code ? e.code : "error";
+            const msg = e && e.message ? e.message : String(e);
+            logRow("CALL", name + " · " + tool + " → " + code);
+            throw new Error(code + " — " + msg);
+          }
+        },
+      },
+      {
+        name: "log_event",
+        description:
+          "Record one step in the run log the operator is watching. Call it as each step happens. " +
+          "Returns \"logged\".",
+        inputSchema: {
+          type: "object",
+          properties: {
+            tag: { type: "string", enum: ["STEP", "DONE", "FAIL", "STAGED", "ASSUME"] },
+            text: { type: "string" },
+            href: { type: "string", description: "URL of the artefact this step produced, when there is one." },
+          },
+          required: ["tag", "text"],
+        },
+        execute(input) {
+          const tag = String(input && input.tag || "STEP").toUpperCase();
+          const known = ["STEP", "DONE", "FAIL", "STAGED", "ASSUME"];
+          logRow(known.includes(tag) ? tag : "STEP", String(input && input.text || ""), input && input.href);
+          return "logged";
+        },
+      },
+      {
+        name: "new_password",
+        description:
+          "Generate one cryptographically random 18-character password for a new Google Workspace " +
+          "account. Returns the password. Use this rather than inventing one.",
+        execute() {
+          const alphabet = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%^&*-_=+";
+          const raw = new Uint32Array(18);
+          crypto.getRandomValues(raw);
+          let out = "";
+          for (let i = 0; i < raw.length; i++) out += alphabet[raw[i] % alphabet.length];
+          return out;
+        },
+      },
+      {
+        name: "finish_run",
+        description:
+          "End the run and show the operator the summary. Call this exactly once, last, even when " +
+          "steps failed.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            changeRef: { type: "string", description: "e.g. JOIN-2026-08-24-mlindqvist" },
+            verified: { type: "number" },
+            staged: { type: "number" },
+            failed: { type: "number" },
+            report: { type: "string", description: "The completion report, as Markdown." },
+            registerRows: { type: "string", description: "The provisioning register rows, as CSV lines." },
+          },
+          required: ["changeRef", "verified", "staged"],
+        },
+        execute(input) {
+          state.finished = {
+            changeRef: String(input && input.changeRef || ""),
+            verified: Number(input && input.verified) || 0,
+            staged: Number(input && input.staged) || 0,
+            failed: Number(input && input.failed) || state.counts.FAIL,
+            report: String(input && input.report || ""),
+            registerRows: String(input && input.registerRows || ""),
+          };
+          renderSummary();
+          return "recorded";
+        },
+      },
+    ];
+  }
+
+  /* ------------------------------------------------------------------- log */
+  function logRow(tag, text, href) {
+    if (state.counts[tag] !== undefined) {
+      state.counts[tag] += 1;
+      $("tallyVerified").textContent = String(state.counts.DONE);
+      $("tallyStaged").textContent = String(state.counts.STAGED);
+      $("tallyFailed").textContent = String(state.counts.FAIL);
+    }
+
+    const row = document.createElement("div");
+    row.className = "row";
+    row.dataset.tag = tag;
+
+    const t = document.createElement("span");
+    t.className = "tag";
+    t.textContent = tag;
+
+    const body = document.createElement("span");
+    body.className = "txt";
+    body.textContent = text;
+
+    if (href && /^https?:\/\//i.test(href)) {
+      body.append(" ");
+      const a = document.createElement("a");
+      a.href = href;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.textContent = "open";
+      body.append(a);
+    }
+
+    row.append(t, body);
+    $("log").append(row);
+    row.scrollIntoView({ block: "nearest" });
+  }
+
+  /* ------------------------------------------------------------- run guard */
+  function guardKey(v) {
+    const who = v.action === "offboard"
+      ? v.workEmail.toLowerCase()
+      : (v.firstName + "." + v.lastName).toLowerCase().replace(/\s+/g, "");
+    return (v.action === "offboard" ? "leave-" : "join-") + who.replace(/[^a-z0-9._-]/g, "");
+  }
+
+  async function checkPriorRun(v) {
+    const db = state.caps.db;
+    if (!db) return null;
+    try {
+      const snap = await db.doc("runs/" + guardKey(v)).get();
+      return snap && snap.exists ? snap.data() : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async function recordRun(v, patch) {
+    const db = state.caps.db;
+    if (!db) return;
+    try {
+      await db.doc("runs/" + guardKey(v)).set(Object.assign({
+        action: v.action,
+        subject: v.action === "offboard" ? v.workEmail : v.firstName + " " + v.lastName,
+        at: new Date().toISOString(),
+      }, patch));
+    } catch { /* the run log on screen is the record that matters */ }
+  }
+
+  /* ------------------------------------------------------------------- run */
+  async function startRun() {
+    const v = values();
+    const err = validate(v);
+    if (err) { goto(1); showDetailsError(err); return; }
+
+    const sample = state.caps.sample;
+    if (!sample) { showRunError("Claude is not available in this view, so the run cannot be driven. Reload the page, and if it persists the sample capability is not granted here."); goto(3); return; }
+
+    const prompt = buildPrompt(v);
+    if (bytes(prompt) > SAMPLE_MAX_PROMPT_BYTES) {
+      showRunError("The skill and this run's details come to " + bytes(prompt).toLocaleString() +
+        " bytes, over the " + SAMPLE_MAX_PROMPT_BYTES.toLocaleString() + "-byte limit. Trim a reference file and rebuild.");
+      goto(3);
+      return;
+    }
+
+    goto(3);
+    state.running = true;
+    state.calls = 0;
+    state.counts = { DONE: 0, STAGED: 0, FAIL: 0 };
+    state.finished = null;
+    state.startedAt = Date.now();
+    state.abort = new AbortController();
+
+    $("log").textContent = "";
+    $("narration").textContent = "—";
+    $("runError").classList.add("hidden");
+    $("tally").classList.remove("hidden");
+    $("working").classList.remove("hidden");
+    $("stopBtn").classList.remove("hidden");
+    $("restartBtn").classList.add("hidden");
+    $("reportBtn").classList.add("hidden");
+    $("registerBtn").classList.add("hidden");
+    $("runTitle").textContent = "Run in progress";
+    $("metaSubject").textContent = v.action === "offboard" ? v.workEmail : v.firstName + " " + v.lastName;
+    $("metaRef").textContent = "pending";
+    $("metaCalls").textContent = "0";
+    $("tallyVerified").textContent = "0";
+    $("tallyStaged").textContent = "0";
+    $("tallyFailed").textContent = "0";
+
+    state.ticker = setInterval(() => {
+      const s = Math.floor((Date.now() - state.startedAt) / 1000);
+      $("metaElapsed").textContent = Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+    }, 1000);
+
+    await recordRun(v, { status: "running", changeRef: null });
+
+    try {
+      $("workingText").textContent = "Claude is reading the skill…";
+      const res = await sample(prompt, {
+        tools: runTools(),
+        signal: state.abort.signal,
+        cache: false,
+        modelTier: "complex",
+        onText: ({ text }) => {
+          $("narration").textContent = text;
+          $("workingText").textContent = "Running — " + state.calls + " Zapier call" + (state.calls === 1 ? "" : "s") + " so far";
+        },
+      });
+      if (res.truncated) {
+        logRow("FAIL", "The run hit the length limit and stopped mid-step. Steps already marked DONE did happen; nothing after that point ran.");
+      }
+      if (!state.finished) renderSummary();
+    } catch (e) {
+      const code = e && e.code ? e.code : "error";
+      if (e && e.text) $("narration").textContent = e.text;
+      showRunError(runErrorCopy(code, e && e.message));
+      logRow("FAIL", "The run stopped: " + code + ". Any step already marked DONE did happen — check the log before re-running.");
+      if (!state.finished) renderSummary();
+    } finally {
+      state.running = false;
+      clearInterval(state.ticker);
+      $("working").classList.add("hidden");
+      $("stopBtn").classList.add("hidden");
+      $("restartBtn").classList.remove("hidden");
+      await recordRun(v, {
+        status: state.finished ? "complete" : "incomplete",
+        changeRef: state.finished ? state.finished.changeRef : null,
+        verified: state.counts.DONE,
+        staged: state.counts.STAGED,
+        failed: state.counts.FAIL,
+      });
+    }
+  }
+
+  function runErrorCopy(code, message) {
+    switch (code) {
+      case "not_granted":
+        return "You declined to let this page ask Claude, so the run cannot continue. Reload the page to be asked again.";
+      case "rate_limited":
+        return "Claude is rate-limited for this view right now. Wait a minute before starting another run — do not retry immediately.";
+      case "cancelled":
+        return "The run was stopped. Steps already marked DONE did happen; check the log before starting again.";
+      case "empty_completion":
+        return "Claude returned nothing. Nothing was executed. Start the run again.";
+      default:
+        return (message || "The run failed.") + " (" + code + ")";
+    }
+  }
+
+  function showRunError(text) {
+    const n = $("runError");
+    n.textContent = text;
+    n.classList.remove("hidden");
+  }
+
+  function renderSummary() {
+    const f = state.finished;
+    $("runTitle").textContent = f ? "Run complete" : "Run ended without a summary";
+    if (f) {
+      if (f.changeRef) $("metaRef").textContent = f.changeRef;
+      $("tallyVerified").textContent = String(f.verified);
+      $("tallyStaged").textContent = String(f.staged);
+      $("tallyFailed").textContent = String(f.failed);
+      if (f.report && state.caps.downloads) $("reportBtn").classList.remove("hidden");
+      if (f.registerRows && state.caps.downloads) $("registerBtn").classList.remove("hidden");
+    }
+  }
+
+  async function offer(filename, data) {
+    const d = state.caps.downloads;
+    if (!d) return;
+    try { await d.save({ filename, data }); }
+    catch (e) {
+      if (e && e.code !== "cancelled" && e.code !== "not_granted") {
+        showRunError("The file could not be saved: " + (e.message || e.code));
+      }
+    }
+  }
+
+  /* ------------------------------------------------------------ navigation */
+  function goto(step) {
+    state.step = step;
+    for (let i = 0; i <= 3; i++) $("step" + i).classList.toggle("hidden", i !== step);
+    renderSpine();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function renderSpine() {
+    for (const b of document.querySelectorAll(".phase")) {
+      const n = Number(b.dataset.step);
+      if (n === state.step) b.setAttribute("aria-current", "step");
+      else b.removeAttribute("aria-current");
+      b.dataset.done = n < state.step ? "1" : "0";
+    }
+  }
+
+  function showDetailsError(msg) {
+    const el = $("detailsError");
+    if (!msg) { el.classList.add("hidden"); return; }
+    el.textContent = msg;
+    el.classList.remove("hidden");
+  }
+
+  function renderDetails() {
+    const joiner = state.action === "onboard";
+    $("detailsTitle").textContent = joiner ? "Joiner details" : "Leaver details";
+    $("detailsLede").textContent = joiner
+      ? "Everything not given here is resolved from the live systems or defaulted, and every default is reported back under Assumptions."
+      : "The work email is the whole input. Three guards run before anything is touched: never the person triggering the run, never an administrator, never an ambiguous address.";
+    $("joinerFields").classList.toggle("hidden", !joiner);
+    $("leaverFields").classList.toggle("hidden", joiner);
+    showDetailsError(null);
+  }
+
+  async function renderReview() {
+    const v = values();
+    const ul = $("willdo");
+    ul.textContent = "";
+
+    const rows = v.action === "onboard"
+      ? [
+          ["BambooHR", "Create the employee record, then write the jobInfo and employmentStatus rows for " + (v.role || "the role") + "."],
+          ["Google Workspace", "Create " + derivedEmail(v) + " with a generated password and forced reset, then set the profile."],
+          ["Gmail", "Sign-in email to " + (v.personalEmail || "the personal address") + " — no copy to the manager."],
+          ["Gmail", "Welcome email to " + derivedEmail(v) + ", copying " + (v.managerEmail || "the default manager") + "."],
+          ["Slack", "One welcome message in #ai-employee-gp-01-onboarding-and-offboarding-assistant."],
+          ["Register", "One row per item, with owners, in the provisioning register."],
+        ]
+      : [
+          ["Guards", "Stop if " + (v.workEmail || "the address") + " is you, is an administrator, or resolves to nobody or to more than one person."],
+          ["Google Workspace", "Suspend the account. Never delete — that is a human decision after the retention window."],
+          ["BambooHR", "Write a Terminated row to the employmentStatus table on the last working day."],
+          ["Gmail", "Farewell email to their personal address, copying the manager."],
+          ["Slack", "Post the farewell, then remove them from every channel the acting identity can reach."],
+          ["Register", "One revoke row per item, with evidence."],
+        ];
+
+    for (const [sys, act] of rows) {
+      const li = document.createElement("li");
+      const a = document.createElement("span");
+      a.className = "sys";
+      a.textContent = sys;
+      const b = document.createElement("span");
+      b.className = "act";
+      b.textContent = act;
+      li.append(a, b);
+      ul.append(li);
+    }
+
+    /* A system with no connector is not a silent gap: say at the checkpoint which
+       steps will come back staged, so the operator knows before the button, not
+       from the log afterwards. */
+    for (const s of MCP.staged || []) {
+      const li = document.createElement("li");
+      const a = document.createElement("span");
+      a.className = "sys";
+      a.textContent = (s.systems || []).join(", ") || s.server;
+      const b = document.createElement("span");
+      b.className = "act";
+      const em = document.createElement("em");
+      em.textContent = "Not configured — these steps will be staged for IT Operations, not run. ";
+      b.append(em, document.createTextNode(s.purpose || ""));
+      li.append(a, b);
+      ul.append(li);
+    }
+
+    const notice = $("rerunNotice");
+    notice.hidden = true;
+    state.overrode = false;
+    const prior = await checkPriorRun(v);
+    if (prior && prior.status === "complete") {
+      notice.hidden = false;
+      notice.textContent = "";
+      const h = document.createElement("strong");
+      h.textContent = "This person has already been through a complete run";
+      const p = document.createElement("p");
+      p.textContent = (prior.action === "offboard" ? "Offboarded" : "Onboarded") +
+        " on " + (prior.at || "an earlier date").slice(0, 10) +
+        (prior.changeRef ? " as " + prior.changeRef : "") +
+        " — " + (prior.verified || 0) + " verified, " + (prior.staged || 0) + " staged.";
+      const p2 = document.createElement("p");
+      p2.textContent = state.action === "onboard"
+        ? "Re-running is correct for pass 2, which adds them to Slack channels once they have signed up. It is not correct as a retry: a repeated BambooHR table write adds a duplicate row at the same date."
+        : "Re-running a leaver is rarely correct. Check the log from the earlier run first.";
+      notice.append(h, p, p2);
+    }
+
+    updateRunButton();
+  }
+
+  /**
+   * Called from both renderReview() and preflight(): `claude.use()` can take up to
+   * 10 s to resolve, so the operator can easily reach Review before the connector
+   * check lands. Without this the button latches disabled until they navigate away.
+   */
+  function updateRunButton() {
+    const blocked = !(state.preflight && state.preflight.ready);
+    $("runBtn").disabled = blocked;
+    $("runBtn").textContent = blocked ? "Connector not ready" : "Start the run";
+  }
+
+  /** Display only — the skill derives the real address during the run. */
+  function derivedEmail(v) {
+    if (v.action === "offboard") return v.workEmail;
+    if (!v.firstName || !v.lastName) return "the derived work address";
+    return (v.firstName + "." + v.lastName).toLowerCase().replace(/\s+/g, "") + "@new-digital-intelligence.com";
+  }
+
+  /* --------------------------------------------------------------- wiring */
+  for (const b of document.querySelectorAll(".choice")) {
+    b.addEventListener("click", () => {
+      state.action = b.dataset.action;
+      for (const o of document.querySelectorAll(".choice")) {
+        o.setAttribute("aria-pressed", String(o === b));
+      }
+      renderDetails();
+    });
+  }
+
+  for (const b of document.querySelectorAll("[data-goto]")) {
+    b.addEventListener("click", () => {
+      const to = Number(b.dataset.goto);
+      if (to === 1) renderDetails();
+      goto(to);
+    });
+  }
+
+  for (const b of document.querySelectorAll(".phase")) {
+    b.addEventListener("click", () => {
+      const to = Number(b.dataset.step);
+      if (state.running || to > state.step) return;
+      if (to === 1) renderDetails();
+      if (to === 2) renderReview();
+      goto(to);
+    });
+  }
+
+  $("toReview").addEventListener("click", async () => {
+    const err = validate(values());
+    if (err) { showDetailsError(err); return; }
+    showDetailsError(null);
+    await renderReview();
+    goto(2);
+  });
+
+  $("runBtn").addEventListener("click", () => { startRun(); });
+  $("recheckBtn").addEventListener("click", () => { preflight(); });
+  $("stopBtn").addEventListener("click", () => { if (state.abort) state.abort.abort(); });
+  $("restartBtn").addEventListener("click", () => { renderDetails(); goto(0); });
+
+  $("reportBtn").addEventListener("click", () => {
+    const f = state.finished;
+    if (f) offer((f.changeRef || "gp-01-run") + " — report.md", f.report);
+  });
+  $("registerBtn").addEventListener("click", () => {
+    const f = state.finished;
+    if (f) offer((f.changeRef || "gp-01-run") + " — register rows.csv", f.registerRows);
+  });
+
+  renderDetails();
+  boot();
+</script>
