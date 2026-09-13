@@ -739,6 +739,8 @@
     password: "",
     facts: [],
     readCache: new Map(),
+    historyRef: null,
+    historyBase: null,
     finished: null,
     guardKey: "",
     overrode: false,
@@ -1365,6 +1367,8 @@
       $("tallyFailed").textContent = String(state.counts.FAIL);
     }
 
+    if (state.running && tag !== "PART") flushHistory("running");
+
     const row = document.createElement("div");
     row.className = "row";
     row.dataset.tag = tag;
@@ -1474,6 +1478,7 @@
     }, 1000);
 
     await recordRun(v, { status: "running", changeRef: null });
+    openHistory(v);
 
     try {
       let input = prompt;
@@ -1541,7 +1546,7 @@
         staged: state.counts.STAGED,
         failed: state.counts.FAIL,
       });
-      await saveHistory(v);
+      flushHistory(state.finished ? "complete" : "incomplete");
     }
   }
 
@@ -1653,24 +1658,39 @@
     return [...found].sort();
   }
 
-  /* ------------------------------------------------------------ run history */
-  async function saveHistory(v) {
+  /* ------------------------------------------------------------ run history
+     Written AS THE RUN GOES, not at the end. There is no server: closing the tab
+     kills the run mid-step, and a record that only appears on completion would
+     leave the most important case — a half-provisioned person — invisible. */
+  function openHistory(v) {
     const db = state.caps.db;
-    if (!db) return;
+    if (!db) { state.historyRef = null; return; }
     try {
-      await db.collection("history").doc().set({
+      state.historyRef = db.collection("history").doc();
+      state.historyBase = {
         at: new Date().toISOString(),
         action: v.action,
         subject: v.action === "offboard" ? v.workEmail : v.firstName + " " + v.lastName,
+      };
+      flushHistory("running");
+    } catch { state.historyRef = null; }
+  }
+
+  function flushHistory(status) {
+    const ref = state.historyRef;
+    if (!ref) return;
+    /* Fire and forget: a slow write must never hold up a provisioning step. */
+    Promise.resolve()
+      .then(() => ref.set(Object.assign({}, state.historyBase, {
         changeRef: state.finished ? state.finished.changeRef : "",
-        status: state.finished ? "complete" : "incomplete",
+        status: status,
         verified: state.counts.DONE,
         staged: state.counts.STAGED,
         failed: state.counts.FAIL,
-        calls: state.calls,
-        log: state.log.filter((l) => l.tag !== "CALL").slice(0, 120),
-      });
-    } catch { /* the on-screen log is still the record */ }
+        log: state.log.slice(0, 120),
+        /* Never the password — db is shared with everyone who can open the page. */
+      })))
+      .catch(() => { /* the on-screen log is still the record */ });
   }
 
   async function loadHistory() {
@@ -1988,6 +2008,15 @@
   $("registerBtn").addEventListener("click", () => {
     const f = state.finished;
     if (f) offer((f.changeRef || "gp-01-run") + " — register rows.csv", f.registerRows);
+  });
+
+  /* A run cannot survive the tab: no server, no continuation. The browser may
+     ignore this inside a frame, but where it is honoured it is the difference
+     between a finished run and a half-provisioned person. */
+  window.addEventListener("beforeunload", (e) => {
+    if (!state.running) return;
+    e.preventDefault();
+    e.returnValue = "";
   });
 
   renderDetails();
