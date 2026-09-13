@@ -366,6 +366,17 @@
   .notice strong { display: block; margin-bottom: 3px; }
   .notice p + p { margin-top: 6px; }
 
+  .tierpick {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line);
+  }
+  .tierpick select {
+    font: 400 13px/1.3 var(--sans); padding: 7px 9px;
+    border: 1px solid var(--line-2); border-radius: var(--radius);
+    background: var(--surface); color: var(--ink);
+  }
+  .tiernote { flex: 1 1 320px; font-size: 12.5px; color: var(--ink-3); min-width: 0; }
+
   /* ---- buttons ------------------------------------------------------------ */
   .actions { display: flex; gap: 10px; align-items: center; margin-top: 24px; flex-wrap: wrap; }
   .actions .spacer { flex: 1; }
@@ -631,6 +642,16 @@
 
     <div class="notice" id="rerunNotice" style="margin-top:16px;" hidden></div>
 
+    <label class="tierpick">
+      <span class="eyebrow">Model</span>
+      <select id="tierSel">
+        <option value="complex">Complex — thinks longest</option>
+        <option value="default">Default — balanced</option>
+        <option value="quick">Quick — no thinking, fastest</option>
+      </select>
+      <span class="tiernote" id="tierNote"></span>
+    </label>
+
     <div class="actions">
       <button class="btn" data-goto="1">Back</button>
       <div class="spacer"></div>
@@ -718,6 +739,28 @@
   const CACHEABLE_READ = /^(inspect_zapier_actions|discover_zapier_actions|list_zapier_connections|list_zapier_skills|get_configuration_url)$/;
 
   const $ = (id) => document.getElementById(id);
+
+  const TIER_NOTE = {
+    complex: "The most capable model, and the right default: this run creates and suspends real accounts, and a missed guard is not recoverable by retrying.",
+    default: "The balanced model. Faster, and usually enough for a straightforward joiner with every detail supplied.",
+    quick: "Fastest, and it does not think before acting. Not recommended here — the leaver guards and the read-backs are exactly the reasoning this tier skips.",
+  };
+
+  function loadTier() {
+    try {
+      const v = localStorage.getItem("gp01.tier");
+      if (v && TIER_NOTE[v]) state.tier = v;
+    } catch { /* private window, blocked storage — the default stands */ }
+    $("tierSel").value = state.tier;
+    $("tierNote").textContent = TIER_NOTE[state.tier];
+  }
+
+  function setTier(v) {
+    if (!TIER_NOTE[v]) return;
+    state.tier = v;
+    $("tierNote").textContent = TIER_NOTE[v];
+    try { localStorage.setItem("gp01.tier", v); } catch { /* nothing to do */ }
+  }
   const bytes = (s) => new TextEncoder().encode(s).length;
 
   /* ------------------------------------------------------------------ state */
@@ -741,6 +784,10 @@
     readCache: new Map(),
     historyRef: null,
     historyBase: null,
+    /* How hard Claude should think. A per-viewer preference, so localStorage —
+       wrapped, because the accessor itself throws in some contexts. */
+    tier: "complex",
+    tierApplied: "",
     finished: null,
     guardKey: "",
     overrode: false,
@@ -1449,6 +1496,7 @@
     state.calls = 0;
     state.counts = { DONE: 0, STAGED: 0, FAIL: 0 };
     state.log = [];
+    state.tierApplied = "";
     state.password = "";
     state.facts = [];
     state.readCache = new Map();
@@ -1493,7 +1541,7 @@
           tools: runTools(),
           signal: state.abort.signal,
           cache: false,
-          modelTier: "complex",
+          modelTier: state.tier,
           onText: ({ text }) => {
             $("narration").textContent = text;
             $("workingText").textContent = part > 1
@@ -1501,6 +1549,16 @@
               : "Working…";
           },
         });
+
+        /* The platform serves a nearby cheaper tier when the viewer's plan lacks the
+           one asked for, and says so only here. Silently getting a weaker model on a
+           provisioning run is worth surfacing. */
+        if (res.modelTierApplied && res.modelTierApplied !== state.tierApplied) {
+          state.tierApplied = res.modelTierApplied;
+          if (state.tierApplied !== state.tier) {
+            logRow("ASSUME", "Your plan could not serve the " + state.tier + " model, so this run used " + state.tierApplied + " instead.");
+          }
+        }
 
         /* finish_run is the only signal that the run is actually over. */
         if (state.finished) break;
@@ -1987,6 +2045,7 @@
     goto(2);
   });
 
+  $("tierSel").addEventListener("change", (e) => setTier(e.target.value));
   $("runBtn").addEventListener("click", () => { startRun(); });
   $("recheckBtn").addEventListener("click", () => { preflight(); });
   $("stopBtn").addEventListener("click", () => { if (state.abort) state.abort.abort(); });
@@ -2019,6 +2078,7 @@
     e.returnValue = "";
   });
 
+  loadTier();
   renderDetails();
   boot();
 </script>
