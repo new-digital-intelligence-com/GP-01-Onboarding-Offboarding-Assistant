@@ -1,0 +1,722 @@
+<title>AI Employees as Artifacts</title>
+
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap">
+
+<style>
+  /* Two hues carry meaning throughout, and nothing else is coloured:
+     BLUE  = Claude's side (servers, thinking, the broker)
+     AMBER = the outside world (connectors, real systems)
+     Everything you write stays neutral — which is the point of the document. */
+  :root {
+    --ground: #f3f3f0;
+    --surface: #fbfbf9;
+    --surface-2: #e9e9e4;
+    --ink: #16171a;
+    --ink-2: #4a4c52;
+    --ink-3: #7b7e86;
+    --line: #d9d9d2;
+    --line-2: #c2c2b9;
+
+    --accent: #3450b4;
+    --accent-soft: #e2e7f7;
+    --warm: #a8561d;
+    --warm-soft: #f6e9de;
+
+    --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #121316;
+      --surface: #191a1e;
+      --surface-2: #212228;
+      --ink: #e8e8e4;
+      --ink-2: #adaeb5;
+      --ink-3: #83858d;
+      --line: #2c2d33;
+      --line-2: #3c3e46;
+      --accent: #8ba4ee;
+      --accent-soft: #1b2240;
+      --warm: #d99257;
+      --warm-soft: #2e2117;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #121316;
+    --surface: #191a1e;
+    --surface-2: #212228;
+    --ink: #e8e8e4;
+    --ink-2: #adaeb5;
+    --ink-3: #83858d;
+    --line: #2c2d33;
+    --line-2: #3c3e46;
+    --accent: #8ba4ee;
+    --accent-soft: #1b2240;
+    --warm: #d99257;
+    --warm-soft: #2e2117;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font: 400 17px/1.65 var(--serif);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 780px; margin: 0 auto; padding: 0 24px 120px; }
+
+  header.top {
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 48px;
+    padding: 56px 0 30px;
+  }
+  header.top .kicker {
+    font: 500 11px/1 var(--mono);
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 14px;
+  }
+  h1 {
+    margin: 0 0 14px;
+    font: 700 40px/1.12 var(--serif);
+    letter-spacing: -.02em;
+    text-wrap: balance;
+  }
+  header.top p { margin: 0; color: var(--ink-2); font-size: 19px; max-width: 60ch; }
+
+  h2 {
+    margin: 64px 0 6px;
+    font: 600 26px/1.25 var(--serif);
+    letter-spacing: -.015em;
+    text-wrap: balance;
+  }
+  h2 .num {
+    display: block;
+    font: 500 11px/1 var(--mono);
+    letter-spacing: .16em;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+  h3 { margin: 34px 0 8px; font: 600 19px/1.35 var(--serif); }
+
+  p { margin: 0 0 16px; max-width: 66ch; }
+  ul, ol { max-width: 66ch; padding-left: 22px; margin: 0 0 16px; }
+  li { margin-bottom: 7px; }
+  strong { font-weight: 600; }
+  code {
+    font: 400 .86em/1.5 var(--mono);
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+  a { color: var(--accent); }
+
+  .lead { font-size: 19px; color: var(--ink-2); }
+
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 3px;
+    padding: 15px 17px;
+    overflow-x: auto;
+    font: 400 13px/1.7 var(--mono);
+    margin: 0 0 20px;
+  }
+  pre code { background: none; padding: 0; font-size: 13px; }
+
+  /* ---- figures ---- */
+  figure {
+    margin: 30px 0 34px;
+    /* Diagrams break out of the reading column — they need the width. */
+    width: 100%;
+  }
+  figure svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 10px 6px;
+  }
+  figcaption {
+    margin-top: 11px;
+    font-size: 14.5px;
+    line-height: 1.55;
+    color: var(--ink-3);
+    max-width: 68ch;
+  }
+
+  /* SVG classes — inline <style> is not allowed inside the fragment, so the
+     page stylesheet carries them and they theme with the tokens. */
+  .d-box   { fill: var(--surface-2); stroke: var(--line-2); stroke-width: 1.5; }
+  .d-you   { fill: var(--surface-2); stroke: var(--ink-3);  stroke-width: 1.5; }
+  .d-claude{ fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+  .d-world { fill: var(--warm-soft); stroke: var(--warm); stroke-width: 1.5; }
+  .d-dash  { fill: none; stroke: var(--line-2); stroke-width: 1.5; stroke-dasharray: 5 4; }
+  .d-line  { fill: none; stroke: currentColor; stroke-width: 1.5; }
+  .d-line-a{ fill: none; stroke: var(--accent); stroke-width: 1.75; }
+  .d-line-w{ fill: none; stroke: var(--warm); stroke-width: 1.75; }
+  .d-t     { fill: var(--ink); font-family: "JetBrains Mono", monospace; font-size: 12px; }
+  .d-t-b   { fill: var(--ink); font-family: "JetBrains Mono", monospace; font-size: 12.5px; font-weight: 700; }
+  .d-t-s   { fill: var(--ink-3); font-family: "JetBrains Mono", monospace; font-size: 10.5px; }
+  .d-t-a   { fill: var(--accent); font-family: "JetBrains Mono", monospace; font-size: 10.5px; }
+  .d-t-w   { fill: var(--warm); font-family: "JetBrains Mono", monospace; font-size: 10.5px; }
+  .d-head  { fill: var(--ink-3); font-family: "JetBrains Mono", monospace; font-size: 10px; letter-spacing: .12em; }
+
+  /* ---- tables ---- */
+  .tbl { width: 100%; border-collapse: collapse; margin: 0 0 22px; font-size: 15px; }
+  .tbl th, .tbl td {
+    text-align: left;
+    padding: 10px 13px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  .tbl th {
+    font: 600 11px/1.3 var(--mono);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    border-bottom-color: var(--line-2);
+  }
+  .tbl td code { font-size: 12.5px; }
+  .scroll { overflow-x: auto; }
+
+  .note {
+    border-left: 3px solid var(--warm);
+    background: var(--warm-soft);
+    padding: 14px 17px;
+    border-radius: 3px;
+    margin: 0 0 22px;
+    font-size: 15.5px;
+    max-width: 68ch;
+  }
+  .note p:last-child { margin-bottom: 0; }
+  .note .lbl {
+    display: block;
+    font: 600 10.5px/1 var(--mono);
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--warm);
+    margin-bottom: 7px;
+  }
+
+  /* ---- contents ---- */
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 18px 22px;
+    margin-bottom: 8px;
+  }
+  .toc ol { margin: 0; padding-left: 20px; max-width: none; }
+  .toc li { margin-bottom: 5px; font-size: 15.5px; }
+  .toc a { text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  footer {
+    margin-top: 72px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    color: var(--ink-3);
+    font-size: 14px;
+  }
+
+  @media (max-width: 700px) {
+    body { font-size: 16px; }
+    h1 { font-size: 31px; }
+    h2 { font-size: 22px; }
+  }
+</style>
+
+<div class="wrap">
+
+<header class="top">
+  <div class="kicker">Architecture note</div>
+  <h1>AI Employees as Artifacts</h1>
+  <p>How one skill, a published HTML page, and a set of connectors add up to something that
+     does real work — and where each piece actually runs.</p>
+</header>
+
+<p class="lead">This is a pattern, not a product. Anywhere it says <em>the skill</em>, substitute
+yours; anywhere it says <em>a connector</em>, substitute whichever ones you need. One worked
+example runs alongside it in the margin notes, but nothing here depends on that example.</p>
+
+<div class="toc">
+  <ol>
+    <li><a href="#one">One skill, more than one way in</a></li>
+    <li><a href="#build">Build is not publish</a></li>
+    <li><a href="#inside">What is actually inside the page</a></li>
+    <li><a href="#where">Where the thinking happens</a></li>
+    <li><a href="#run">One run, start to finish</a></li>
+    <li><a href="#creds">Who holds the credentials</a></li>
+    <li><a href="#limits">The four limits you will hit</a></li>
+    <li><a href="#example">The worked example</a></li>
+  </ol>
+</div>
+
+<!-- ============================================================= 1 -->
+<h2 id="one"><span class="num">01</span>One skill, more than one way in</h2>
+
+<p>The skill is a Markdown file. It holds the rules — what to do, in what order, what is
+verified, what must never happen. It contains no code and calls nothing.</p>
+
+<p>That file is the <strong>only</strong> implementation. Every surface reaches the same file,
+and none of them re-states a rule in code. The moment a rule exists twice, the copies drift and
+every fix has to be made in both places.</p>
+
+<figure>
+  <svg viewBox="0 0 720 250" role="img" aria-label="One skill file reaches two surfaces: a plugin installed from git into Claude chat, and a published artifact that carries a build-time copy of the skill.">
+    <defs>
+      <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+      </marker>
+    </defs>
+
+    <text x="24" y="26" class="d-head">SOURCE OF TRUTH</text>
+    <rect x="24" y="40" width="190" height="150" rx="4" class="d-you"/>
+    <text x="44" y="74" class="d-t-b">SKILL.md</text>
+    <text x="44" y="98" class="d-t-s">the rules</text>
+    <text x="44" y="118" class="d-t-s">plain Markdown</text>
+    <text x="44" y="138" class="d-t-s">no code</text>
+    <text x="44" y="166" class="d-t-s">+ reference files</text>
+
+    <text x="404" y="26" class="d-head">SURFACES</text>
+
+    <rect x="404" y="40" width="292" height="66" rx="4" class="d-box"/>
+    <text x="424" y="68" class="d-t-b">Claude chat</text>
+    <text x="424" y="90" class="d-t-s">installed as a plugin</text>
+
+    <rect x="404" y="124" width="292" height="66" rx="4" class="d-box"/>
+    <text x="424" y="152" class="d-t-b">Published artifact</text>
+    <text x="424" y="174" class="d-t-s">an HTML page with a copy inside</text>
+
+    <path d="M 214 88 L 396 73" class="d-line" marker-end="url(#a1)"/>
+    <text x="240" y="72" class="d-t-s">read live from git</text>
+
+    <path d="M 214 142 L 396 157" class="d-line" marker-end="url(#a1)"/>
+    <text x="240" y="178" class="d-t-s">copied in at build time</text>
+
+    <path d="M 24 214 L 696 214" class="d-dash"/>
+    <text x="24" y="236" class="d-t-s">Same rules either way. The difference is only how the text arrives.</text>
+  </svg>
+  <figcaption>The plugin path re-reads the file whenever it updates. The artifact path takes a
+    snapshot — which is why an edited skill needs a rebuild before the page reflects it.</figcaption>
+</figure>
+
+<!-- ============================================================= 2 -->
+<h2 id="build"><span class="num">02</span>Build is not publish</h2>
+
+<p>Two separate actions, and confusing them causes most of the early mistakes.</p>
+
+<p>Your source page has a <strong>hole</strong> in it — a placeholder word that means nothing to
+anyone. A build script reads your skill files and does a find-and-replace, writing a second file
+with the hole filled. That second file is what gets published.</p>
+
+<figure>
+  <svg viewBox="0 0 720 300" role="img" aria-label="Source page with a placeholder plus skill files go through a build script to produce a self-contained page, which is then published to a URL.">
+    <defs>
+      <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+      </marker>
+      <marker id="a2a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)"/>
+      </marker>
+    </defs>
+
+    <text x="24" y="24" class="d-head">ON YOUR MACHINE</text>
+    <path d="M 16 34 L 16 258 L 470 258 L 470 34" class="d-dash"/>
+
+    <rect x="32" y="52" width="180" height="72" rx="4" class="d-you"/>
+    <text x="48" y="78" class="d-t-b">src/page.html</text>
+    <text x="48" y="100" class="d-t-s">has a hole:</text>
+    <text x="48" y="116" class="d-t-a">"__SKILL_FILES__"</text>
+
+    <rect x="32" y="150" width="180" height="72" rx="4" class="d-you"/>
+    <text x="48" y="176" class="d-t-b">SKILL.md</text>
+    <text x="48" y="198" class="d-t-s">+ reference files</text>
+    <text x="48" y="214" class="d-t-s">the text to paste in</text>
+
+    <rect x="262" y="98" width="118" height="76" rx="4" class="d-box"/>
+    <text x="278" y="128" class="d-t-b">build</text>
+    <text x="278" y="150" class="d-t-s">find &amp;</text>
+    <text x="278" y="165" class="d-t-s">replace</text>
+
+    <path d="M 212 88 L 254 122" class="d-line" marker-end="url(#a2)"/>
+    <path d="M 212 186 L 254 152" class="d-line" marker-end="url(#a2)"/>
+
+    <rect x="290" y="196" width="160" height="52" rx="4" class="d-you"/>
+    <text x="306" y="220" class="d-t-b">dist/page.html</text>
+    <text x="306" y="238" class="d-t-s">hole filled, self-contained</text>
+
+    <path d="M 321 174 L 350 190" class="d-line" marker-end="url(#a2)"/>
+
+    <text x="516" y="24" class="d-head">ON CLAUDE</text>
+    <path d="M 500 34 L 500 258 L 704 258 L 704 34" class="d-dash"/>
+
+    <rect x="518" y="98" width="168" height="76" rx="4" class="d-claude"/>
+    <text x="536" y="128" class="d-t-b">the artifact</text>
+    <text x="536" y="150" class="d-t-s">a URL</text>
+    <text x="536" y="166" class="d-t-s">+ its own database</text>
+
+    <path d="M 452 220 C 500 220, 500 180, 512 150" class="d-line-a" marker-end="url(#a2a)"/>
+    <text x="472" y="196" class="d-t-a">publish</text>
+
+    <path d="M 16 278 L 704 278" class="d-dash"/>
+    <text x="24" y="296" class="d-t-s">Building touches nothing on Claude. Publishing to the same URL keeps the database.</text>
+  </svg>
+  <figcaption>Build as often as you like — it only writes a file. Only publishing changes what
+    people see, and only publishing <em>without</em> naming the existing artifact creates a second
+    one with an empty database.</figcaption>
+</figure>
+
+<div class="note">
+  <span class="lbl">The rule</span>
+  <p>Edit the source. Publish the built file. Never edit the built file — the next build
+    overwrites it.</p>
+</div>
+
+<!-- ============================================================= 3 -->
+<h2 id="inside"><span class="num">03</span>What is actually inside the page</h2>
+
+<p>Three things, and none of them is intelligence.</p>
+
+<figure>
+  <svg viewBox="0 0 720 310" role="img" aria-label="The published page contains your markup and code, the skill as plain text, and a small object called claude whose only function is use, which is the single exit from the page.">
+    <defs>
+      <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)"/>
+      </marker>
+    </defs>
+
+    <rect x="24" y="34" width="440" height="248" rx="6" class="d-you"/>
+    <text x="44" y="60" class="d-head">THE PUBLISHED PAGE</text>
+
+    <rect x="44" y="76" width="400" height="56" rx="4" class="d-box"/>
+    <text x="62" y="100" class="d-t-b">your markup and code</text>
+    <text x="62" y="120" class="d-t-s">form, buttons, the log, the wiring</text>
+
+    <rect x="44" y="144" width="400" height="56" rx="4" class="d-box"/>
+    <text x="62" y="168" class="d-t-b">the skill — as text</text>
+    <text x="62" y="188" class="d-t-s">a long string. inert. knows nothing.</text>
+
+    <rect x="44" y="212" width="400" height="56" rx="4" class="d-claude"/>
+    <text x="62" y="236" class="d-t-b">window.claude</text>
+    <text x="62" y="256" class="d-t-s">one function: use(). the only way out.</text>
+
+    <path d="M 464 240 L 552 240" class="d-line-a" marker-end="url(#a3)"/>
+
+    <rect x="560" y="96" width="140" height="180" rx="4" class="d-claude"/>
+    <text x="578" y="124" class="d-head">BEHIND THE DOOR</text>
+    <text x="578" y="152" class="d-t">sample</text>
+    <text x="578" y="172" class="d-t-s">thinks</text>
+    <text x="578" y="198" class="d-t">mcp</text>
+    <text x="578" y="218" class="d-t-s">calls connectors</text>
+    <text x="578" y="244" class="d-t">db</text>
+    <text x="578" y="262" class="d-t-s">stores data</text>
+
+    <text x="24" y="302" class="d-t-s">No network of its own. No model. The page cannot reach anything except through that door.</text>
+  </svg>
+  <figcaption>The page has no network access of its own — a direct request to any outside address
+    is blocked. Everything it can reach, it reaches by asking through <code>claude.use()</code>.</figcaption>
+</figure>
+
+<h3>The capabilities, and which one thinks</h3>
+
+<div class="scroll">
+<table class="tbl">
+  <tr><th>Name</th><th>What it is</th><th>Thinks?</th></tr>
+  <tr><td><code>sample</code></td><td>Send text to Claude, get text back. With tools, Claude can ask the page to do things.</td><td>yes</td></tr>
+  <tr><td><code>mcp</code></td><td>Call a connector the viewer has, using their credentials.</td><td>no</td></tr>
+  <tr><td><code>db</code></td><td>A small database attached to this artifact, shared by its viewers.</td><td>no</td></tr>
+  <tr><td><code>downloads</code></td><td>Offer a generated file to the person looking at the page.</td><td>no</td></tr>
+</table>
+</div>
+
+<p>Each one is requested separately and can come back empty — not granted, not available on that
+plan, not served in that view. So every one of them is checked before use, and the page is
+designed to still make sense without any given one.</p>
+
+<pre><code>const mcp = await claude.use("mcp");
+if (!mcp) return renderWithoutConnectors();   // design for absence</code></pre>
+
+<!-- ============================================================= 4 -->
+<h2 id="where"><span class="num">04</span>Where the thinking happens</h2>
+
+<p>This is the part that resists intuition: <strong>the model is not in the page.</strong></p>
+
+<p>Asking it something is a message over the internet, exactly like a chat app. Your phone does not
+contain the person you are texting. The page does not contain Claude.</p>
+
+<figure>
+  <svg viewBox="0 0 720 270" role="img" aria-label="The browser sends a prompt to Claude's servers and waits; Claude thinks there and replies, sometimes with a request for the page to run one of its own functions.">
+    <defs>
+      <marker id="a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)"/>
+      </marker>
+    </defs>
+
+    <rect x="24" y="56" width="250" height="164" rx="6" class="d-you"/>
+    <text x="44" y="82" class="d-head">VIEWER'S BROWSER</text>
+    <text x="44" y="112" class="d-t-b">the page</text>
+    <text x="44" y="138" class="d-t-s">holds the skill text</text>
+    <text x="44" y="158" class="d-t-s">holds no model</text>
+    <text x="44" y="186" class="d-t-s">waits…</text>
+
+    <rect x="446" y="56" width="250" height="164" rx="6" class="d-claude"/>
+    <text x="466" y="82" class="d-head">ANTHROPIC'S SERVERS</text>
+    <text x="466" y="112" class="d-t-b">the model</text>
+    <text x="466" y="138" class="d-t-s">reads what you sent</text>
+    <text x="466" y="158" class="d-t-s">decides what to do</text>
+    <text x="466" y="186" class="d-t-s">all thinking happens here</text>
+
+    <path d="M 282 104 L 438 104" class="d-line-a" marker-end="url(#a4)"/>
+    <text x="300" y="94" class="d-t-a">the skill + the request</text>
+
+    <path d="M 438 152 L 282 152" class="d-line-a" marker-end="url(#a4)"/>
+    <text x="300" y="142" class="d-t-a">an answer, or "run this tool"</text>
+
+    <path d="M 282 190 L 438 190" class="d-line-a" marker-end="url(#a4)"/>
+    <text x="300" y="212" class="d-t-a">the tool's result</text>
+
+    <text x="24" y="250" class="d-t-s">The pause you see is the round trip plus the thinking — none of it is your page being slow.</text>
+  </svg>
+  <figcaption>The bottom two arrows are what makes a page an agent rather than a chat box: the
+    model can reply with a request to run one of the page's own functions, and the page answers it.</figcaption>
+</figure>
+
+<p>So the skill is not <em>read</em> by Claude in any file sense. The page sends it as part of the
+message, every time. It is the same as pasting it into a chat window, just done in code.</p>
+
+<!-- ============================================================= 5 -->
+<h2 id="run"><span class="num">05</span>One run, start to finish</h2>
+
+<p>A run is a loop. The page opens it with one long message and then plays messenger until the
+model says it is finished.</p>
+
+<figure>
+  <svg viewBox="0 0 720 400" role="img" aria-label="A run: the page sends the skill and the request, the model replies asking for a tool, the page forwards it to a connector through Claude's broker which attaches credentials, the connector calls the real system, and the result travels back the same way, repeating until the model reports it is done.">
+    <defs>
+      <marker id="a5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+      </marker>
+      <marker id="a5w" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--warm)"/>
+      </marker>
+    </defs>
+
+    <rect x="20" y="44" width="140" height="330" rx="5" class="d-you"/>
+    <text x="34" y="68" class="d-head">THE PAGE</text>
+
+    <rect x="200" y="44" width="140" height="330" rx="5" class="d-claude"/>
+    <text x="214" y="68" class="d-head">THE MODEL</text>
+
+    <rect x="380" y="44" width="140" height="330" rx="5" class="d-claude"/>
+    <text x="394" y="68" class="d-head">BROKER</text>
+    <text x="394" y="88" class="d-t-s">holds the token</text>
+
+    <rect x="560" y="44" width="140" height="330" rx="5" class="d-world"/>
+    <text x="574" y="68" class="d-head">REAL SYSTEMS</text>
+    <text x="574" y="88" class="d-t-s">via a connector</text>
+
+    <text x="34" y="120" class="d-t-s">1. click Run</text>
+    <path d="M 160 134 L 192 134" class="d-line" marker-end="url(#a5)"/>
+    <text x="214" y="120" class="d-t-s">2. reads the skill</text>
+
+    <path d="M 200 166 L 168 166" class="d-line" marker-end="url(#a5)"/>
+    <text x="214" y="158" class="d-t-s">3. "call this tool"</text>
+
+    <text x="34" y="200" class="d-t-s">4. runs your</text>
+    <text x="34" y="216" class="d-t-s">   own function</text>
+    <path d="M 160 232 C 176 232, 176 232, 372 232" class="d-line" marker-end="url(#a5)"/>
+    <text x="394" y="224" class="d-t-s">5. adds credentials</text>
+
+    <path d="M 520 256 L 552 256" class="d-line-w" marker-end="url(#a5w)"/>
+    <text x="574" y="248" class="d-t-w">6. the real write</text>
+
+    <path d="M 560 288 L 528 288" class="d-line-w" marker-end="url(#a5w)"/>
+    <text x="394" y="280" class="d-t-s">7. result</text>
+
+    <path d="M 380 312 C 300 312, 220 312, 168 312" class="d-line" marker-end="url(#a5)"/>
+    <text x="34" y="304" class="d-t-s">8. back to the page</text>
+
+    <path d="M 160 344 L 192 344" class="d-line" marker-end="url(#a5)"/>
+    <text x="214" y="336" class="d-t-s">9. …and round again</text>
+
+    <path d="M 20 388 L 700 388" class="d-dash"/>
+  </svg>
+  <figcaption>Steps 3 to 8 repeat, often twenty times or more, until the model calls the page's
+    "finished" function. The page never talks to the real system, and never sees a credential.</figcaption>
+</figure>
+
+<h3>Why the page gives the model functions, not knowledge</h3>
+
+<p>The functions a page offers should be <strong>plumbing</strong>, not procedure. A single
+pass-through that forwards <code>{connector, tool, arguments}</code> keeps every rule about
+<em>what to call and when</em> in the skill, where it can be read and corrected. The moment the
+page contains a function called <code>createTheAccount()</code>, the logic exists twice.</p>
+
+<p>Useful functions to offer, in rough order of value:</p>
+
+<ul>
+  <li><strong>Call a connector</strong> — one pass-through, validated against the allowlist.</li>
+  <li><strong>List what is reachable</strong> — so the model uses real names instead of guessing.</li>
+  <li><strong>Log an event</strong> — so the visible record comes from structured calls, not from parsing prose.</li>
+  <li><strong>Remember a fact</strong> — anything needed later that cannot be cheaply looked up again.</li>
+  <li><strong>Finish</strong> — an explicit end, so "it stopped" and "it finished" are different things.</li>
+</ul>
+
+<!-- ============================================================= 6 -->
+<h2 id="creds"><span class="num">06</span>Who holds the credentials</h2>
+
+<p>Nobody can put a secret in a published page — it is delivered to the browser, and anyone who
+opens it can read every line. So the page holds <strong>no token at all</strong>. It names a
+connector, and the credential is attached on Claude's side, per viewer.</p>
+
+<figure>
+  <svg viewBox="0 0 720 300" role="img" aria-label="The same page opened by two people: each viewer's own connector supplies the credentials, so a viewer without that connector cannot reach the system at all.">
+    <defs>
+      <marker id="a6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--warm)"/>
+      </marker>
+      <marker id="a6x" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--ink-3)"/>
+      </marker>
+    </defs>
+
+    <rect x="24" y="36" width="150" height="88" rx="4" class="d-you"/>
+    <text x="40" y="62" class="d-t-b">the page</text>
+    <text x="40" y="84" class="d-t-s">opened by A</text>
+    <text x="40" y="104" class="d-t-s">names "X"</text>
+
+    <rect x="24" y="176" width="150" height="88" rx="4" class="d-you"/>
+    <text x="40" y="202" class="d-t-b">the page</text>
+    <text x="40" y="224" class="d-t-s">opened by B</text>
+    <text x="40" y="244" class="d-t-s">names "X"</text>
+
+    <rect x="264" y="36" width="170" height="88" rx="4" class="d-claude"/>
+    <text x="282" y="62" class="d-t-b">A's connector</text>
+    <text x="282" y="84" class="d-t-s">connected ✓</text>
+    <text x="282" y="104" class="d-t-s">token lives here</text>
+
+    <rect x="264" y="176" width="170" height="88" rx="4" class="d-box"/>
+    <text x="282" y="202" class="d-t-b">B has none</text>
+    <text x="282" y="224" class="d-t-s">nothing to attach</text>
+
+    <rect x="530" y="36" width="166" height="88" rx="4" class="d-world"/>
+    <text x="548" y="62" class="d-t-b">the real system</text>
+    <text x="548" y="84" class="d-t-s">the write lands</text>
+
+    <rect x="530" y="176" width="166" height="88" rx="4" class="d-box"/>
+    <text x="548" y="202" class="d-t-b">unreachable</text>
+    <text x="548" y="224" class="d-t-s">server_not_connected</text>
+
+    <path d="M 174 80 L 256 80" class="d-line" marker-end="url(#a6x)"/>
+    <path d="M 434 80 L 522 80" class="d-line-w" marker-end="url(#a6)"/>
+
+    <path d="M 174 220 L 256 220" class="d-line" marker-end="url(#a6x)"/>
+    <path d="M 434 220 L 522 220" class="d-dash"/>
+
+    <text x="24" y="290" class="d-t-s">Same page, same code, same words. Only the viewer's own connections differ.</text>
+  </svg>
+  <figcaption>The consequence: sharing the page is not the same as granting access. The connector
+    is the permission, and a link alone gives nobody anything.</figcaption>
+</figure>
+
+<div class="note">
+  <span class="lbl">The design decision this forces</span>
+  <p>If every person needs their own connector, each one behaves slightly differently and each
+    needs setting up. If an administrator publishes one connector for the whole organisation,
+    every run is identical and nobody sets anything up — but then anyone who can open the page can
+    do everything it does. Pick deliberately; there is no third option.</p>
+</div>
+
+<!-- ============================================================= 7 -->
+<h2 id="limits"><span class="num">07</span>The four limits you will hit</h2>
+
+<p>None of these are bugs, and all four bite in the first week.</p>
+
+<div class="scroll">
+<table class="tbl">
+  <tr><th>Limit</th><th>What happens</th><th>What to do</th></tr>
+  <tr>
+    <td><strong>Tool rounds</strong></td>
+    <td>One request gets a bounded number of tool calls. A long job runs out partway and the model is told tools are off.</td>
+    <td>Split a job into parts. When one ends unfinished, send a fresh request carrying what already happened and an instruction not to repeat it.</td>
+  </tr>
+  <tr>
+    <td><strong>Prompt size</strong></td>
+    <td>There is a cap on how much text one request may carry. A long skill plus a growing log will reach it.</td>
+    <td>Check the size at build time and fail the build, not the run. Keep the carried-forward log short.</td>
+  </tr>
+  <tr>
+    <td><strong>The tab</strong></td>
+    <td>There is no server. Closing the page kills the job mid-step. Anything already done stays done.</td>
+    <td>Write progress to the database as it happens, never only at the end. Warn before unload.</td>
+  </tr>
+  <tr>
+    <td><strong>No network</strong></td>
+    <td>The page cannot call any outside address directly. Requests are blocked.</td>
+    <td>Everything external goes through a connector — including anything of your own, wrapped as a server and added as one.</td>
+  </tr>
+</table>
+</div>
+
+<h3>Two failure modes worth designing for early</h3>
+
+<p><strong>State does not survive a part boundary.</strong> Anything the model generated and did
+not write down is gone when the next part begins. If it generated a credential in part one and
+cannot recall it in part two, it will generate another — and may apply it again. Make such values
+stable: generate once, return the same value on every later request, and carry it forward
+explicitly.</p>
+
+<p><strong>Repeated lookups are expensive in the only currency that matters.</strong> A catalogue
+that cannot change during a job should be fetched once and served from memory afterwards. Each
+repeat costs a tool round, and tool rounds are what run out.</p>
+
+<!-- ============================================================= 8 -->
+<h2 id="example"><span class="num">08</span>The worked example</h2>
+
+<p>The pattern above was built out against one real case: an onboarding and offboarding assistant
+that creates and suspends staff accounts, sends their first emails, posts a welcome, and writes an
+audit row for every item.</p>
+
+<div class="scroll">
+<table class="tbl">
+  <tr><th>In the pattern</th><th>In that case</th></tr>
+  <tr><td>The skill</td><td>~47 KB of rules: what is verified, what is handed to a human, what is impossible and why</td></tr>
+  <tr><td>The connector</td><td>One broker fronting the mail, chat, directory and spreadsheet systems</td></tr>
+  <tr><td>The pass-through</td><td><code>{connector, tool, arguments}</code> — no system-specific shape in the page</td></tr>
+  <tr><td>Parts per job</td><td>4, after the round-waste was fixed; 6 and unfinished before</td></tr>
+  <tr><td>The database</td><td>Run history and a repeat-run guard</td></tr>
+</table>
+</div>
+
+<p>The numbers are not the point. The point is that every one of them was discovered by running it
+for real, and that each discovery changed the skill rather than the page — which is the whole
+reason the skill is kept as the only implementation.</p>
+
+<h3>What transfers to any other case</h3>
+
+<ol>
+  <li>Write the rules as prose, in one file, and keep them there.</li>
+  <li>Give the model plumbing, not procedure.</li>
+  <li>Assume every job spans several parts, and design the hand-off before you need it.</li>
+  <li>Put every fact you verify back into the skill, with the date and what you observed.</li>
+  <li>Decide who holds the connector before you decide who gets the link.</li>
+</ol>
+
+<footer>
+  An architecture note. The mechanisms described here are properties of the artifact runtime and
+  of the connector model, not of any one assistant built on them.
+</footer>
+
+</div>
