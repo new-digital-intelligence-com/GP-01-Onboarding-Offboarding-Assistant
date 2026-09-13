@@ -259,6 +259,7 @@
   .histempty { padding: 14px 16px; color: var(--ink-3); font-size: 13px; }
 
   /* ---- ask box ------------------------------------------------------------ */
+  .askpanel { margin-top: 22px; }
   .askbox { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
   .askrow { display: flex; gap: 8px; margin-top: 7px; }
   .askrow input {
@@ -420,16 +421,15 @@
   .row[data-tag="STAGED"] .tag { color: var(--warn); }
   .row[data-tag="ASSUME"] { border-left-color: var(--info); }
   .row[data-tag="ASSUME"] .tag { color: var(--info); }
-  .activity {
-    margin-left: auto;
-    font: 400 11.5px/1.5 var(--mono);
-    color: var(--ink-3);
-    text-align: right;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 46%;
+  /* A continuation is routine bookkeeping, so it reads as a divider, not an event. */
+  .row[data-tag="PART"] {
+    background: var(--surface-2);
+    border-left-color: transparent;
+    padding-top: 6px;
+    padding-bottom: 6px;
   }
+  .row[data-tag="PART"] .tag { color: var(--ink-3); font-size: 9.5px; }
+  .row[data-tag="PART"] .txt { color: var(--ink-3); font-size: 12px; }
 
   .working {
     display: flex; align-items: center; gap: 9px;
@@ -648,7 +648,6 @@
     <div class="runmeta">
       <div><span class="k">Subject</span><span class="v" id="metaSubject">—</span></div>
       <div><span class="k">Change ref</span><span class="v" id="metaRef">pending</span></div>
-      <div><span class="k">Zapier calls</span><span class="v" id="metaCalls">0</span></div>
       <div><span class="k">Elapsed</span><span class="v" id="metaElapsed">0:00</span></div>
     </div>
 
@@ -663,7 +662,6 @@
     <div class="working" id="working">
       <span class="pulse"></span>
       <span id="workingText">Sending the run to Claude…</span>
-      <span class="activity" id="activity"></span>
     </div>
 
     <div class="notice bad hidden" id="runError"></div>
@@ -673,18 +671,6 @@
       <pre id="narration">—</pre>
     </details>
 
-    <!-- The run log is the evidence; this is how you interrogate it without
-         leaving the page or starting a second run. -->
-    <section class="askbox hidden" id="askBox">
-      <label class="eyebrow" for="askInput">Ask Claude about this run</label>
-      <div class="askrow">
-        <input id="askInput" type="text" autocomplete="off"
-               placeholder="Why was Slack staged? What is left to do by hand?">
-        <button class="btn" id="askBtn">Ask</button>
-      </div>
-      <div class="askout" id="askOut" hidden></div>
-    </section>
-
     <div class="actions">
       <button class="btn danger hidden" id="stopBtn">Stop the run</button>
       <button class="btn hidden" id="reportBtn">Download report</button>
@@ -692,6 +678,18 @@
       <div class="spacer"></div>
       <button class="btn hidden" id="restartBtn">Start another run</button>
     </div>
+  </section>
+
+  <!-- Always available: before a run it answers from the skill, during and after
+       it answers from the run log. Both are questions an operator actually has. -->
+  <section class="panel askpanel" id="askBox">
+    <label class="eyebrow" for="askInput">Ask Claude</label>
+    <div class="askrow">
+      <input id="askInput" type="text" autocomplete="off"
+             placeholder="What happens to Slack when someone leaves?">
+      <button class="btn" id="askBtn">Ask</button>
+    </div>
+    <div class="askout" id="askOut" hidden></div>
   </section>
 </div>
 
@@ -757,6 +755,7 @@
       claude.use("downloads").catch(() => null),
     ]);
     state.caps = { mcp, sample, db, downloads };
+    if (!sample) $("askBox").classList.add("hidden");
     await preflight();
   }
 
@@ -1070,6 +1069,17 @@
       "they are different things: failed means the system errored and a retry may fix it; staged",
       "means a named human owes the work.",
       "",
+      "**Write these lines for a People Ops reader, not an engineer.** Say what happened to the",
+      "person. Leave out how you did it — no API names, no HTTP verbs, no endpoint paths, no tool",
+      "names. Keep the identifiers that a human would need to check the work: the email address,",
+      "the message id, the channel, the spreadsheet range.",
+      "",
+      "  good: Setting profile (title, department, manager, recovery email) on adem.dahloul@…",
+      "  bad:  Setting profile on adem.dahloul@… via raw Directory API PUT",
+      "",
+      "  good: Sign-in email sent to ademdahloul@gmail.com (no cc), message id 1a09816d96ab65e2",
+      "  bad:  Called gmail_send_email through execute_zapier_write_action, got 200",
+      "",
       "### Spend tool rounds carefully",
       "",
       "Your tool rounds are limited and a whole run must fit. The first live run wasted most of",
@@ -1242,8 +1252,6 @@
           }
 
           state.calls += 1;
-          $("metaCalls").textContent = String(state.calls);
-          setActivity(name + " · " + tool);
           try {
             const res = await mcp.callTool(name, tool, (input && input.input) || {}, { signal: ctx.signal });
             const out = clip(res.payload !== undefined ? res.payload : res.content);
@@ -1252,7 +1260,6 @@
           } catch (e) {
             const code = e && e.code ? e.code : "error";
             const msg = e && e.message ? e.message : String(e);
-            setActivity(name + " · " + tool + " → " + code);
             throw new Error(code + " — " + msg);
           }
         },
@@ -1348,13 +1355,6 @@
   }
 
   /* ------------------------------------------------------------------- log */
-  /** Connector traffic belongs in the activity line, not the run log. The log is the
-   *  record of what happened to a person; a tool name is not that. */
-  function setActivity(text) {
-    const el = $("activity");
-    if (el) el.textContent = text;
-  }
-
   function logRow(tag, text, href) {
     state.log.push({ tag: tag, text: text, href: href || "" });
 
@@ -1464,7 +1464,6 @@
     $("runTitle").textContent = "Run in progress";
     $("metaSubject").textContent = v.action === "offboard" ? v.workEmail : v.firstName + " " + v.lastName;
     $("metaRef").textContent = "pending";
-    $("metaCalls").textContent = "0";
     $("tallyVerified").textContent = "0";
     $("tallyStaged").textContent = "0";
     $("tallyFailed").textContent = "0";
@@ -1492,9 +1491,9 @@
           modelTier: "complex",
           onText: ({ text }) => {
             $("narration").textContent = text;
-            $("workingText").textContent =
-              (part > 1 ? "Part " + part + " — " : "Running — ") +
-              state.calls + " Zapier call" + (state.calls === 1 ? "" : "s") + " so far";
+            $("workingText").textContent = part > 1
+              ? "Working — part " + part
+              : "Working…";
           },
         });
 
@@ -1517,7 +1516,8 @@
         }
 
         part += 1;
-        logRow("STEP", "Out of tool rounds — continuing the same run (part " + part + "). Nothing above is repeated.");
+        /* Not a warning. A run is expected to span parts; only the total cap is a failure. */
+        logRow("PART", "Part " + part + " — the run continues where it left off");
         input = next;
       }
 
@@ -1542,7 +1542,6 @@
         failed: state.counts.FAIL,
       });
       await saveHistory(v);
-      if (state.caps.sample) $("askBox").classList.remove("hidden");
     }
   }
 
@@ -1751,26 +1750,41 @@
     out.textContent = "Thinking…";
 
     const v = values();
-    const context = [
-      "You are answering a question about ONE provisioning run that a People Ops operator just",
-      "watched in a console. Answer only from the run log below. If the log does not say, say so",
-      "plainly — never guess what happened to a real employee's account.",
-      "",
-      "Be short. Plain text, no markdown headings.",
-      "",
-      "Run: " + (v.action === "offboard" ? "offboard " + v.workEmail : "onboard " + v.firstName + " " + v.lastName),
-      "Change ref: " + (state.finished && state.finished.changeRef ? state.finished.changeRef : "none — the run did not finish"),
-      "Tallies: " + state.counts.DONE + " verified, " + state.counts.STAGED + " staged, " + state.counts.FAIL + " failed.",
-      "",
-      "DONE means it was executed and read back. STAGED means a named human owes the work.",
-      "FAIL means the system errored and a retry may fix it. A STEP with no matching DONE was",
-      "started but never confirmed.",
-      "",
-      "Run log:",
-      runLogText() || "(empty — nothing was logged)",
-      "",
-      "Question: " + q,
-    ].join("\n");
+    const log = runLogText();
+    const context = log
+      ? [
+          "You are answering a question about ONE provisioning run that a People Ops operator just",
+          "watched in a console. Answer only from the run log below. If the log does not say, say so",
+          "plainly — never guess what happened to a real employee's account.",
+          "",
+          "Be short. Plain text, no markdown headings. No API or tool names.",
+          "",
+          "Run: " + (v.action === "offboard" ? "offboard " + v.workEmail : "onboard " + v.firstName + " " + v.lastName),
+          "Change ref: " + (state.finished && state.finished.changeRef ? state.finished.changeRef : "none — the run did not finish"),
+          "Tallies: " + state.counts.DONE + " verified, " + state.counts.STAGED + " staged, " + state.counts.FAIL + " failed.",
+          "",
+          "DONE means it was executed and read back. STAGED means a named human owes the work.",
+          "FAIL means the system errored and a retry may fix it. A STEP with no matching DONE was",
+          "started but never confirmed.",
+          "",
+          "Run log:",
+          log,
+          "",
+          "Question: " + q,
+        ].join("\n")
+      : [
+          "You are answering a question about GP-01, NDI's onboarding and offboarding assistant,",
+          "for a People Ops operator sitting in front of its console. No run has happened in this",
+          "view yet, so answer from the skill below — what GP-01 does, what it cannot do, and what",
+          "it hands to a human.",
+          "",
+          "Be short. Plain text, no markdown headings. No API or tool names. If the skill does not",
+          "answer the question, say so rather than guessing.",
+          "",
+          (SKILL_FILES["SKILL.md"] || "").replace(/^---[\s\S]*?---\n/, ""),
+          "",
+          "Question: " + q,
+        ].join("\n");
 
     try {
       await sample(context, {
